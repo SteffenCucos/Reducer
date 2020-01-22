@@ -1,11 +1,10 @@
 package com.scucos.maven.Reducer;
 
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
+
+import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
+import com.scucos.maven.Reducer.Slice.SliceConstructionException;
 
 public class Main {
 
@@ -20,12 +19,12 @@ public class Main {
 		
 		Reducer<Region> regionReducer = new AbstractReducer<Region>() {
 			@Override
-			public Region fromMap(Map<Object, Collection<Object>> slice) {
-				return new Region(
-						slice.get("countries").stream().map(o -> (String)o).collect(Collectors.toSet()),
-						slice.get("states").stream().map(o -> (String)o).collect(Collectors.toSet()),
-						slice.get("cities").stream().map(o -> (String)o).collect(Collectors.toSet())
-				);
+			public Region fromSlice(Slice slice) {
+				try {
+					return (Region) slice.toType(Region.class);
+				} catch (ObjectConstructionException e) {
+					return null;
+				}
 			}
 		};
 		
@@ -34,10 +33,14 @@ public class Main {
 		return;
 	}
 	
-	public static class Region implements Mergeable<Region> {
+	public static class Region implements Reduceable<Region> {
 		public Set<String> countries;
 		public Set<String> states;
 		public Set<String> cities;
+		
+		public Region() {
+			
+		}
 		
 		@SuppressWarnings("unchecked" )
 		public Region(String country, String state, String city) {
@@ -54,15 +57,12 @@ public class Main {
 
 		@Override
 		@SuppressWarnings("unchecked" )
-		public Map<Object, Collection<Object>> toMap() {
-			// TODO Auto-generated method stub
-			return new HashMap() {{
-				put("countries", countries);
-				put("states", states);
-				put("cities", cities);
-			}};
+		public Slice<Region> toSlice() {
+			try {
+				return new Slice<Region>(this);
+			} catch (SliceConstructionException e) {
+				return null;
+			}
 		}
 	}
-	
-	
 }

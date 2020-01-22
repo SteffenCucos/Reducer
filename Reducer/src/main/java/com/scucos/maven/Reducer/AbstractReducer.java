@@ -9,30 +9,30 @@ import java.util.Collection;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
-public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer<T> {
+public abstract class AbstractReducer<T extends Reduceable<T>> implements Reducer<T> {
 
 	@Override
 	public Set<T> reduce(Set<T> ts) {
-		Set<Map<Object,Collection<Object>>> slices = ts
+		Set<Slice<T>> slices = ts
 				.stream()
-				.map(t -> t.toMap())
+				.map(t -> t.toSlice())
 				.collect(Collectors.toSet());
 		
 		
-		Set<Map<Object,Collection<Object>>> reduced = reduce(slices, buildCollectionCounts(slices), getWidth(slices), slices.size());
+		Set<Slice<T>> reduced = reduce(slices, buildCollectionCounts(slices), getWidth(slices), slices.size());
 		
 		return reduced
 				.stream()
-				.map(s -> fromMap(s))
+				.map(s -> fromSlice(s))
 				.collect(Collectors.toSet());
 	}
 	
 	public class CollectionNode implements Comparable<CollectionNode> {
 		public Collection<Object> objects;
-		public Object category;
+		public String category;
 		public Integer count;
 		
-		public CollectionNode(Collection<Object> objects, Object category, Integer count) {
+		public CollectionNode(Collection<Object> objects, String category, Integer count) {
 			this.objects = objects;
 			this.category = category;
 			this.count = count;
@@ -45,17 +45,17 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 		}
 	}
 	
-	PriorityQueue<CollectionNode> buildCollectionCounts(Set<Map<Object,Collection<Object>>> slices) {
+	PriorityQueue<CollectionNode> buildCollectionCounts(Set<Slice<T>> slices) {
 		PriorityQueue<CollectionNode> queue = new PriorityQueue<>();
 		
 		Map<Collection<Object>, Integer> collectionCountMap = new HashMap<>();
-		Map<Collection<Object>, Object> collectionCategoryMap = new HashMap<>();
+		Map<Collection<Object>, String> collectionCategoryMap = new HashMap<>();
 		
 		
-		Set<Object> categories = slices.iterator().next().keySet();
-		for(Map<Object,Collection<Object>> slice : slices) {
-			for(Object category : categories) {
-				Collection<Object> objects = slice.get(category);
+		Set<String> categories = slices.iterator().next().categories;
+		for(Slice<T> slice : slices) {
+			for(String category : categories) {
+				Collection<Object> objects = slice.getEntry(category);
 				collectionCountMap.put(objects, collectionCountMap.getOrDefault(objects, 0) + 1);
 				if(!collectionCategoryMap.containsKey(objects)) {
 					collectionCategoryMap.put(objects, category);
@@ -63,9 +63,9 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 			}
 		}
 		
-		for(Entry<Collection<Object>, Object> partialNode : collectionCategoryMap.entrySet()) {
+		for(Entry<Collection<Object>, String> partialNode : collectionCategoryMap.entrySet()) {
 			Collection<Object> objects = partialNode.getKey();
-			Object category = partialNode.getValue();
+			String category = partialNode.getValue();
 			Integer count = collectionCountMap.get(objects);
 			
 			queue.add(new CollectionNode(objects, category, count));
@@ -75,7 +75,7 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 	}
 	
 	@SuppressWarnings("unchecked")
-	private Set<Map<Object,Collection<Object>>> reduce(Set<Map<Object,Collection<Object>>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int prevSize) {
+	private Set<Slice<T>> reduce(Set<Slice<T>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int prevSize) {
 		if(slices.isEmpty()) { 
 			return slices;
 		}
@@ -88,19 +88,21 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 			return slices;
 		}
 		
-		Set<Map<Object,Collection<Object>>> reduced = new HashSet<>();
+		Set<Slice<T>> reduced = new HashSet<>();
 		
 		if(width == 1) {
 			Set<Object> objects = new HashSet<>();
-			Object category = slices.iterator().next().keySet().iterator().next();
-			for(Map<Object,Collection<Object>> slice : slices) {
-				objects.addAll(slice.get(category));
+			String category = slices.iterator().next().categories.iterator().next();
+			for(Slice<T> slice : slices) {
+				objects.addAll(slice.getEntry(category));
 			}
 			
 			reduced.add(
-				new HashMap() {{
-					put(category, objects);
-				}});
+				new Slice<T>(
+					new HashMap() {{
+						put(category, objects);
+					}}
+				));
 			
 			return reduced;
 		}
@@ -108,7 +110,7 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 		CollectionNode mostNode = collectionsQueue.poll();
 		
 		Collection<Object> mostObjects = mostNode.objects;
-		Object category = mostNode.category;
+		String category = mostNode.category;
 		Integer count = mostNode.count;
 		
 		if(count == 1) {
@@ -116,12 +118,12 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 			return slices;
 		}
 		
-		Set<Map<Object,Collection<Object>>> slicesContainingMost = new HashSet<>();
-		Set<Map<Object,Collection<Object>>> slicesWithoutMost = new HashSet<>();
+		Set<Slice<T>> slicesContainingMost = new HashSet<>();
+		Set<Slice<T>> slicesWithoutMost = new HashSet<>();
 		
-		for(Map<Object,Collection<Object>> slice : slices) {
-			if(slice.get(category).equals(mostObjects)) {
-				slice.remove(category);
+		for(Slice<T> slice : slices) {
+			if(slice.getEntry(category).equals(mostObjects)) {
+				slice.deleteEntry(category);
 				slicesContainingMost.add(slice);
 			} else {
 				slicesWithoutMost.add(slice);
@@ -135,10 +137,10 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 			}
 		}
 		
-		Set<Map<Object,Collection<Object>>> reducedSubSlices = reduce(slicesContainingMost, otherCategories, width - 1, slicesContainingMost.size());
-		for(Map<Object,Collection<Object>> reducedSubSlice : reducedSubSlices) {
+		Set<Slice<T>> reducedSubSlices = reduce(slicesContainingMost, otherCategories, width - 1, slicesContainingMost.size());
+		for(Slice<T> reducedSubSlice : reducedSubSlices) {
 			//Get the width back to normal
-			reducedSubSlice.put(category, mostObjects);
+			reducedSubSlice.addEntry(category, mostObjects);
 		}
 		reduced.addAll(reducedSubSlices);
 		reduced.addAll(slicesWithoutMost);
@@ -150,11 +152,11 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 		return reduced;
 	}
 	
-	private int getWidth(Set<? extends Map<?,?>> slices) {
+	private int getWidth(Set<Slice<T>> slices) {
 		if(slices.size() == 0) {
 			return 0;
 		}
-		return slices.iterator().next().size();
+		return slices.iterator().next().width;
 	}
 	
 	

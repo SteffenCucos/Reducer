@@ -4,8 +4,8 @@ import java.util.Set;
 import java.util.Collection;
 import java.util.Map;
 
-public interface Reducer<T extends Mergeable<T>> {
+public interface Reducer<T extends Reduceable<T>> {
 	Set<T> reduce(Set<T> ts);
 	
-	T fromMap(Map<Object, Collection<Object>> slice);
+	T fromSlice(Slice<T> slice);
 }
