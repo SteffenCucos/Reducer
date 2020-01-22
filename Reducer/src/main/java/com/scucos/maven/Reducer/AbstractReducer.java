@@ -19,7 +19,7 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 				.collect(Collectors.toSet());
 		
 		
-		Set<Map<Object,Collection<Object>>> reduced = reduce(slices, getWidth(slices), slices.size());
+		Set<Map<Object,Collection<Object>>> reduced = reduce(slices, buildCollectionCounts(slices), getWidth(slices), slices.size());
 		
 		return reduced
 				.stream()
@@ -75,7 +75,7 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 	}
 	
 	@SuppressWarnings("unchecked")
-	private Set<Map<Object,Collection<Object>>> reduce(Set<Map<Object,Collection<Object>>> slices, int width, int prevSize) {
+	private Set<Map<Object,Collection<Object>>> reduce(Set<Map<Object,Collection<Object>>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int prevSize) {
 		if(slices.isEmpty()) { 
 			return slices;
 		}
@@ -104,8 +104,7 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 			
 			return reduced;
 		}
-		
-		PriorityQueue<CollectionNode> collectionsQueue = buildCollectionCounts(slices); 
+		 
 		CollectionNode mostNode = collectionsQueue.poll();
 		
 		Collection<Object> mostObjects = mostNode.objects;
@@ -136,7 +135,7 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 			}
 		}
 		
-		Set<Map<Object,Collection<Object>>> reducedSubSlices = reduce(slicesContainingMost, width - 1, slicesContainingMost.size());
+		Set<Map<Object,Collection<Object>>> reducedSubSlices = reduce(slicesContainingMost, otherCategories, width - 1, slicesContainingMost.size());
 		for(Map<Object,Collection<Object>> reducedSubSlice : reducedSubSlices) {
 			//Get the width back to normal
 			reducedSubSlice.put(category, mostObjects);
@@ -145,7 +144,7 @@ public abstract class AbstractReducer<T extends Mergeable<T>> implements Reducer
 		reduced.addAll(slicesWithoutMost);
 		
 		if(reduced.size() < prevSize || prevSize == 0) {
-			return reduce(reduced, width, reduced.size());
+			return reduce(reduced, buildCollectionCounts(reduced), width, reduced.size());
 		}
 		
 		return reduced;
