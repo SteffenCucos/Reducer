@@ -9,13 +9,22 @@ import java.util.Collection;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
+import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
+import com.scucos.maven.Reducer.Slice.SliceConstructionException;
+
 public abstract class AbstractReducer<T extends Reduceable<T>> implements Reducer<T> {
 
 	@Override
 	public Set<T> reduce(Set<T> ts) {
 		Set<Slice<T>> slices = ts
 				.stream()
-				.map(t -> t.toSlice())
+				.map(t -> {
+					try {
+						return t.toSlice();
+					} catch (SliceConstructionException e) {
+						throw e;
+					}
+				})
 				.collect(Collectors.toSet());
 		
 		
@@ -23,7 +32,13 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 		
 		return reduced
 				.stream()
-				.map(s -> fromSlice(s))
+				.map(s -> {
+					try {
+						return fromSlice(s);
+					} catch (ObjectConstructionException e) {
+						throw e;
+					}
+				})
 				.collect(Collectors.toSet());
 	}
 	

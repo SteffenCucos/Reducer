@@ -19,11 +19,11 @@ public class Main {
 		
 		Reducer<Region> regionReducer = new AbstractReducer<Region>() {
 			@Override
-			public Region fromSlice(Slice slice) {
+			public Region fromSlice(Slice slice) throws ObjectConstructionException {
 				try {
 					return (Region) slice.toType(Region.class);
 				} catch (ObjectConstructionException e) {
-					return null;
+					throw e;
 				}
 			}
 		};
@@ -61,7 +61,7 @@ public class Main {
 			try {
 				return new Slice<Region>(this);
 			} catch (SliceConstructionException e) {
-				return null;
+				throw e;
 			}
 		}
 	}

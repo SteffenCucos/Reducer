@@ -12,13 +12,13 @@ public class Slice<T> {
 	public int width;
 	public Set<String> categories;
 	
-	public static class SliceConstructionException extends Exception {
+	public static class SliceConstructionException extends RuntimeException {
 		public SliceConstructionException(String error) {
 			super(error);
 		}
 	}
 	
-	public static class ObjectConstructionException extends Exception {
+	public static class ObjectConstructionException extends RuntimeException {
 		public ObjectConstructionException(String error) {
 			super(error);
 		}
@@ -32,8 +32,6 @@ public class Slice<T> {
 	
 	@SuppressWarnings("unchecked")
 	public Slice(T t) throws SliceConstructionException {
-		//this.cls = t.getClass();
-		
 		//Only work on the top level fields (ignore super fields)
 		for(Field field : t.getClass().getDeclaredFields()) {
 			
@@ -60,7 +58,7 @@ public class Slice<T> {
 		try {
 			t = (T) cls.newInstance();
 		} catch (InstantiationException e) {
-			throw new ObjectConstructionException("Object does not have empty constructor");
+			throw new ObjectConstructionException("Class '" + cls.toString() + "' does not have empty constructor");
 		} catch (IllegalAccessException e) {
 			throw new ObjectConstructionException("Unable to create object from slice");
 		}
