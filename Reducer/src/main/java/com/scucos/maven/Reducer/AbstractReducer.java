@@ -4,50 +4,37 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map.Entry;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
-import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
-import com.scucos.maven.Reducer.Slice.SliceConstructionException;
-
-public abstract class AbstractReducer<T extends Reduceable<T>> implements Reducer<T> {
+public abstract class AbstractReducer<T> implements Reducer<T> {
 
 	@Override
 	public Set<T> reduce(Set<T> ts) {
 		Set<Slice<T>> slices = ts
 				.stream()
-				.map(t -> {
-					try {
-						return t.toSlice();
-					} catch (SliceConstructionException e) {
-						throw e;
-					}
-				})
+				.map(t -> toSlice(t))
 				.collect(Collectors.toSet());
 		
 		
-		Set<Slice<T>> reduced = reduce(slices, buildCollectionCounts(slices), getWidth(slices), slices.size());
+		Set<Slice<T>> reduced = reduce(slices, buildCollectionCounts(slices), getWidth(slices), slices.size(), 0);
 		
 		return reduced
 				.stream()
-				.map(s -> {
-					try {
-						return fromSlice(s);
-					} catch (ObjectConstructionException e) {
-						throw e;
-					}
-				})
+				.map(s -> fromSlice(s))
 				.collect(Collectors.toSet());
 	}
 	
 	public class CollectionNode implements Comparable<CollectionNode> {
-		public Collection<Object> objects;
+		public Collection<?> objects;
 		public String category;
 		public Integer count;
 		
-		public CollectionNode(Collection<Object> objects, String category, Integer count) {
+		public CollectionNode(Collection<?> objects, String category, Integer count) {
 			this.objects = objects;
 			this.category = category;
 			this.count = count;
@@ -63,14 +50,14 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 	PriorityQueue<CollectionNode> buildCollectionCounts(Set<Slice<T>> slices) {
 		PriorityQueue<CollectionNode> queue = new PriorityQueue<>();
 		
-		Map<Collection<Object>, Integer> collectionCountMap = new HashMap<>();
-		Map<Collection<Object>, String> collectionCategoryMap = new HashMap<>();
+		Map<Collection<?>, Integer> collectionCountMap = new HashMap<>();
+		Map<Collection<?>, String> collectionCategoryMap = new HashMap<>();
 		
 		
-		Set<String> categories = slices.iterator().next().categories;
+		Set<String> categories = slices.iterator().next().getCategories();
 		for(Slice<T> slice : slices) {
 			for(String category : categories) {
-				Collection<Object> objects = slice.getEntry(category);
+				Collection<?> objects = slice.getEntry(category);
 				collectionCountMap.put(objects, collectionCountMap.getOrDefault(objects, 0) + 1);
 				if(!collectionCategoryMap.containsKey(objects)) {
 					collectionCategoryMap.put(objects, category);
@@ -78,8 +65,8 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 			}
 		}
 		
-		for(Entry<Collection<Object>, String> partialNode : collectionCategoryMap.entrySet()) {
-			Collection<Object> objects = partialNode.getKey();
+		for(Entry<Collection<?>, String> partialNode : collectionCategoryMap.entrySet()) {
+			Collection<?> objects = partialNode.getKey();
 			String category = partialNode.getValue();
 			Integer count = collectionCountMap.get(objects);
 			
@@ -90,7 +77,7 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 	}
 	
 	@SuppressWarnings("unchecked")
-	private Set<Slice<T>> reduce(Set<Slice<T>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int prevSize) {
+	private Set<Slice<T>> reduce(Set<Slice<T>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int prevSize, int secondTry) {
 		if(slices.isEmpty()) { 
 			return slices;
 		}
@@ -106,10 +93,14 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 		Set<Slice<T>> reduced = new HashSet<>();
 		
 		if(width == 1) {
-			Set<Object> objects = new HashSet<>();
-			String category = slices.iterator().next().categories.iterator().next();
+			Slice<T> first = slices.iterator().next();
+			String category = first.getCategories().iterator().next();
+			Collection<Object> objects = (Collection<Object>) first.getEntry(category);
+			
 			for(Slice<T> slice : slices) {
-				objects.addAll(slice.getEntry(category));
+				if(slice != first) {
+					objects.addAll(slice.getEntry(category));
+				}
 			}
 			
 			reduced.add(
@@ -124,7 +115,7 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 		 
 		CollectionNode mostNode = collectionsQueue.poll();
 		
-		Collection<Object> mostObjects = mostNode.objects;
+		Collection<?> mostObjects = mostNode.objects;
 		String category = mostNode.category;
 		Integer count = mostNode.count;
 		
@@ -145,14 +136,7 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 			}
 		}
 		
-		PriorityQueue<CollectionNode> otherCategories = new PriorityQueue<>();
-		for(CollectionNode node : collectionsQueue) {
-			if(!node.category.equals(category)) {
-				otherCategories.add(node);
-			}
-		}
-		
-		Set<Slice<T>> reducedSubSlices = reduce(slicesContainingMost, otherCategories, width - 1, slicesContainingMost.size());
+		Set<Slice<T>> reducedSubSlices = reduce(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0);
 		for(Slice<T> reducedSubSlice : reducedSubSlices) {
 			//Get the width back to normal
 			reducedSubSlice.addEntry(category, mostObjects);
@@ -160,8 +144,13 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 		reduced.addAll(reducedSubSlices);
 		reduced.addAll(slicesWithoutMost);
 		
+		if(reduced.size() == prevSize && secondTry == 0) { //Test this new case!
+			//Try again,
+			reduced = reduce(reduced, collectionsQueue, width, reduced.size(), 1);
+		}
+		
 		if(reduced.size() < prevSize || prevSize == 0) {
-			return reduce(reduced, buildCollectionCounts(reduced), width, reduced.size());
+			return reduce(reduced, buildCollectionCounts(reduced), width, reduced.size(), 0);
 		}
 		
 		return reduced;
@@ -171,7 +160,7 @@ public abstract class AbstractReducer<T extends Reduceable<T>> implements Reduce
 		if(slices.size() == 0) {
 			return 0;
 		}
-		return slices.iterator().next().width;
+		return slices.iterator().next().getWidth();
 	}
 	
 	

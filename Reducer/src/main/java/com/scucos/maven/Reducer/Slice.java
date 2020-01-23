@@ -1,32 +1,38 @@
 package com.scucos.maven.Reducer;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Slice<T> {
 
-	private Map<String, Collection<Object>> slice = new HashMap<>();
-	public int width;
-	public Set<String> categories;
+	private Map<String, Collection<?>> slice = new HashMap<>();
 	
+	@SuppressWarnings("serial")
 	public static class SliceConstructionException extends RuntimeException {
 		public SliceConstructionException(String error) {
 			super(error);
 		}
 	}
 	
+	@SuppressWarnings("serial")
 	public static class ObjectConstructionException extends RuntimeException {
 		public ObjectConstructionException(String error) {
 			super(error);
 		}
 	}
 	
-	public Slice(Map<String, Collection<Object>> slice) {
+	public Slice() {
+
+	}
+	
+	public Slice(Map<String, Collection<?>> slice) {
 		this.slice = slice;
-		this.categories = slice.keySet();
 	}
 	
 	
@@ -49,8 +55,6 @@ public class Slice<T> {
 				}
 			}
 		}
-		this.categories = slice.keySet();
-		this.width = slice.size();
 	}
 	
 	public T toType(Class<T> cls) throws ObjectConstructionException {
@@ -64,7 +68,7 @@ public class Slice<T> {
 		}
 		
 		for(String fieldName : slice.keySet()) {
-			Collection<Object> objects = slice.get(fieldName);
+			Collection<?> objects = slice.get(fieldName);
 			if(!setField(t, fieldName, objects)) {
 				throw new ObjectConstructionException("Unable to set field '" + fieldName + "' while constructing object");
 			}
@@ -99,14 +103,15 @@ public class Slice<T> {
 //	    }
 //	}
 	
-	public static boolean setField(Object targetObject, String fieldName, Object fieldValue) {
+	@SuppressWarnings("unchecked")
+	public boolean setField(Object targetObject, String fieldName, Object fieldValue) {
 	    Field field;
 	    try {
 	        field = targetObject.getClass().getDeclaredField(fieldName);
 	    } catch (NoSuchFieldException e) {
 	        field = null;
 	    }
-	    Class superClass = targetObject.getClass().getSuperclass();
+	    Class<? super T> superClass = (Class<? super T>) targetObject.getClass().getSuperclass();
 	    while (field == null && superClass != null) {
 	        try {
 	            field = superClass.getDeclaredField(fieldName);
@@ -126,15 +131,35 @@ public class Slice<T> {
 	    }
 	}
 	
-	public void addEntry(String category, Collection<Object> objects) {
+	public int getWidth() {
+		return this.slice.size();
+	}
+	
+	public Set<String> getCategories() {
+		return this.slice.keySet();
+	}
+	
+	public void addEntry(String category, Collection<?> objects) {
 		this.slice.put(category, objects);
 	}
 	
-	public Collection<Object> getEntry(String category) {
+	public Collection<?> getEntry(String category) {
 		return this.slice.get(category);
 	}
 	
-	public void deleteEntry(String category) {
+	@SuppressWarnings("unchecked")
+	public static <T, M, C extends Collection> C getAsType(String category, Slice<T> slice, C collection) {
+		List<M> list = (List<M>) slice.getEntry(category)
+				.stream()
+				.map(o -> (M)o)
+				.collect(Collectors.<M>toList());
+		
+		collection.addAll(list);
+		
+		return collection;
+	}
+	
+	protected void deleteEntry(String category) {
 		this.slice.remove(category);
 	}
 }
