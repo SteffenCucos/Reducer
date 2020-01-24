@@ -1,9 +1,11 @@
 package com.scucos.maven.Reducer;
 
+import java.util.Collection;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 
 import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
 import com.scucos.maven.Reducer.Slice.SliceConstructionException;
@@ -20,17 +22,29 @@ public class Main {
 			add(new Region("CAN", "Anchorage", 10));
 		}};
 		
+		
+		Reducer<Map<Integer, Collection<Long>>> mapReflectiveReducer = new AbstractReducer<Map<Integer, Collection<Long>>>() {
+			@Override
+			public Slice<Map<Integer, Collection<Long>>> toSlice(Map<Integer, Collection<Long>> t) throws SliceConstructionException {
+				return new Slice<>(t);
+			}
+
+			@Override
+			public Map<Integer, Collection<Long>> fromSlice(Slice<Map<Integer, Collection<Long>>> slice) throws ObjectConstructionException {
+				return Slice.toMap(slice);
+			}
+		};
+		
+		
 		Reducer<Region> reflectiveRegionReducer = new AbstractReducer<Region>() {
 			@Override
-			public Region fromSlice(Slice<Region> slice) throws ObjectConstructionException {
-				//Reflection based fromSlice 
-				return (Region) slice.toType(Region.class);
+			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
+				return new Slice<>(region); // Reflection based toSlice
 			}
 			
 			@Override
-			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
-				//Reflection based toSlice
-				return new Slice<Region>(region);
+			public Region fromSlice(Slice<Region> slice) throws ObjectConstructionException {
+				return slice.toType(Region.class); // Reflection based fromSlice 
 			}
 		};
 		
@@ -46,10 +60,10 @@ public class Main {
 			
 			@Override
 			public Region fromSlice(Slice<Region> slice) throws ObjectConstructionException {
-				Set<String> countries = Slice.getAsType("countries", slice, new HashSet<>());
+				Set<String> countries = Slice.getFieldAsType("countries", slice, new HashSet<>());
 				//Set<String> states = Slice.getAsType("states", slice, new HashSet<>());
-				Set<String> cities = Slice.getAsType("cities", slice, new HashSet<>());
-				List<Integer> populations = Slice.getAsType("populations", slice, new ArrayList<>());
+				Set<String> cities = Slice.getFieldAsType("cities", slice, new HashSet<>());
+				List<Integer> populations = Slice.getFieldAsType("populations", slice, new ArrayList<>());
 				return new Region(countries, cities, populations);
 			}
 		};

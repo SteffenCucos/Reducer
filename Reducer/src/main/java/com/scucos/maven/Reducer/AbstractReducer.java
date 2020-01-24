@@ -31,10 +31,10 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 	
 	public class CollectionNode implements Comparable<CollectionNode> {
 		public Collection<?> objects;
-		public String category;
+		public Object category;
 		public Integer count;
 		
-		public CollectionNode(Collection<?> objects, String category, Integer count) {
+		public CollectionNode(Collection<?> objects, Object category, Integer count) {
 			this.objects = objects;
 			this.category = category;
 			this.count = count;
@@ -51,12 +51,12 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 		PriorityQueue<CollectionNode> queue = new PriorityQueue<>();
 		
 		Map<Collection<?>, Integer> collectionCountMap = new HashMap<>();
-		Map<Collection<?>, String> collectionCategoryMap = new HashMap<>();
+		Map<Collection<?>, Object> collectionCategoryMap = new HashMap<>();
 		
 		
-		Set<String> categories = slices.iterator().next().getCategories();
+		Set<Object> categories = slices.iterator().next().getCategories();
 		for(Slice<T> slice : slices) {
-			for(String category : categories) {
+			for(Object category : categories) {
 				Collection<?> objects = slice.getEntry(category);
 				collectionCountMap.put(objects, collectionCountMap.getOrDefault(objects, 0) + 1);
 				if(!collectionCategoryMap.containsKey(objects)) {
@@ -65,9 +65,9 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 			}
 		}
 		
-		for(Entry<Collection<?>, String> partialNode : collectionCategoryMap.entrySet()) {
+		for(Entry<Collection<?>, Object> partialNode : collectionCategoryMap.entrySet()) {
 			Collection<?> objects = partialNode.getKey();
-			String category = partialNode.getValue();
+			Object category = partialNode.getValue();
 			Integer count = collectionCountMap.get(objects);
 			
 			queue.add(new CollectionNode(objects, category, count));
@@ -78,37 +78,32 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 	
 	@SuppressWarnings("unchecked")
 	private Set<Slice<T>> reduce(Set<Slice<T>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int prevSize, int secondTry) {
-		if(slices.isEmpty()) { 
-			return slices;
-		}
-		
-		if(slices.size() == 1) {
-			return slices;
-		}
-		
-		if(width == 0) {
+		if(slices.isEmpty() || slices.size() == 1 || width == 0) {
 			return slices;
 		}
 		
 		Set<Slice<T>> reduced = new HashSet<>();
 		
 		if(width == 1) {
-			Slice<T> first = slices.iterator().next();
-			String category = first.getCategories().iterator().next();
-			Collection<Object> objects = (Collection<Object>) first.getEntry(category);
-			
-			for(Slice<T> slice : slices) {
-				if(slice != first) {
-					objects.addAll(slice.getEntry(category));
-				}
-			}
+			Object category = collectionsQueue.poll().category;
+			Collection<Object> objects = slices
+					.stream()
+					.map(s -> (Collection<Object>)s.getEntry(category))
+					.reduce(null, (accumulator, currentObjects) -> {
+						if(accumulator == null) {
+							return currentObjects;
+						}
+						accumulator.addAll(currentObjects);
+						return accumulator;
+					});
 			
 			reduced.add(
 				new Slice<T>(
 					new HashMap() {{
 						put(category, objects);
 					}}
-				));
+				)
+			);
 			
 			return reduced;
 		}
@@ -116,37 +111,35 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 		CollectionNode mostNode = collectionsQueue.poll();
 		
 		Collection<?> mostObjects = mostNode.objects;
-		String category = mostNode.category;
+		Object category = mostNode.category;
 		Integer count = mostNode.count;
 		
-		if(count == 1) {
-			//No merging is possible, all collections are unique
+		if(count == 1) { // No merging is possible, all collections are unique
 			return slices;
 		}
 		
-		Set<Slice<T>> slicesContainingMost = new HashSet<>();
-		Set<Slice<T>> slicesWithoutMost = new HashSet<>();
+		Map<Boolean, List<Slice<T>>> partition = slices.stream().collect(Collectors.partitioningBy(s -> s.getEntry(category).equals(mostObjects)));
 		
-		for(Slice<T> slice : slices) {
-			if(slice.getEntry(category).equals(mostObjects)) {
-				slice.deleteEntry(category);
-				slicesContainingMost.add(slice);
-			} else {
-				slicesWithoutMost.add(slice);
-			}
-		}
+		Set<Slice<T>> slicesContainingMost = partition.get(true)
+				.stream()
+				.map(s -> { 
+					s.deleteEntry(category); //Remove this section of the slice to reduce width
+					return s;
+				})
+				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> reducedSubSlices = reduce(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0);
-		for(Slice<T> reducedSubSlice : reducedSubSlices) {
-			//Get the width back to normal
-			reducedSubSlice.addEntry(category, mostObjects);
-		}
-		reduced.addAll(reducedSubSlices);
-		reduced.addAll(slicesWithoutMost);
+		reduced = reduce(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0)
+				.stream()
+				.map(r -> {
+					r.addEntry(category, mostObjects); // Get the width back to normal
+					return r;
+				})
+				.collect(Collectors.toSet());
 		
-		if(reduced.size() == prevSize && secondTry == 0) { //Test this new case!
-			//Try again,
-			reduced = reduce(reduced, collectionsQueue, width, reduced.size(), 1);
+		reduced.addAll(partition.get(false));
+		
+		if(reduced.size() == prevSize && secondTry == 0) {
+			reduced = reduce(reduced, collectionsQueue, width, reduced.size(), 1); // Try again, there may be a better splitting
 		}
 		
 		if(reduced.size() < prevSize || prevSize == 0) {

@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public class Slice<T> {
 
-	private Map<String, Collection<?>> slice = new HashMap<>();
+	private Map<Object, Collection<?>> slice = new HashMap<>();
 	
 	@SuppressWarnings("serial")
 	public static class SliceConstructionException extends RuntimeException {
@@ -31,7 +31,7 @@ public class Slice<T> {
 
 	}
 	
-	public Slice(Map<String, Collection<?>> slice) {
+	public Slice(Map<Object, Collection<?>> slice) {
 		this.slice = slice;
 	}
 	
@@ -57,6 +57,17 @@ public class Slice<T> {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
+	public static <K, V> Map<K, Collection<V>> toMap(Slice<Map<K, Collection<V>>> slice) {
+		Map<K, Collection<V>> map = new HashMap<>();
+		Map<Object, Collection<?>> sliceMap = slice.getMap();
+		
+		for(Object key : sliceMap.keySet()) {
+			map.put((K)key, (Collection<V>) sliceMap.get(key));
+		}
+		return map;
+	}
+	
 	public T toType(Class<T> cls) throws ObjectConstructionException {
 		T t = null;
 		try {
@@ -67,8 +78,9 @@ public class Slice<T> {
 			throw new ObjectConstructionException("Unable to create object from slice");
 		}
 		
-		for(String fieldName : slice.keySet()) {
-			Collection<?> objects = slice.get(fieldName);
+		for(Object field : slice.keySet()) {
+			Collection<?> objects = slice.get(field);
+			String fieldName = (String)field;
 			if(!setField(t, fieldName, objects)) {
 				throw new ObjectConstructionException("Unable to set field '" + fieldName + "' while constructing object");
 			}
@@ -135,20 +147,20 @@ public class Slice<T> {
 		return this.slice.size();
 	}
 	
-	public Set<String> getCategories() {
+	public Set<Object> getCategories() {
 		return this.slice.keySet();
 	}
 	
-	public void addEntry(String category, Collection<?> objects) {
+	public void addEntry(Object category, Collection<?> objects) {
 		this.slice.put(category, objects);
 	}
 	
-	public Collection<?> getEntry(String category) {
+	public Collection<?> getEntry(Object category) {
 		return this.slice.get(category);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <T, M, C extends Collection> C getAsType(String category, Slice<T> slice, C collection) {
+	public static <T, M, C extends Collection> C getFieldAsType(String category, Slice<T> slice, C collection) {
 		List<M> list = (List<M>) slice.getEntry(category)
 				.stream()
 				.map(o -> (M)o)
@@ -159,7 +171,11 @@ public class Slice<T> {
 		return collection;
 	}
 	
-	protected void deleteEntry(String category) {
+	protected void deleteEntry(Object category) {
 		this.slice.remove(category);
+	}
+
+	public Map<Object, Collection<?>> getMap() {
+		return slice;
 	}
 }
