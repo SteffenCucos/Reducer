@@ -1,7 +1,6 @@
 package com.scucos.maven.Reducer;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -9,6 +8,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Slice<T> objects are used to encapsulate a rectangular slice of the N dimensional space formed from a Set<Slice<T>> objects
+ * The slice keeps track of a list of categories (dimension identifiers) as well as a Collection<Object> for each category
+ * representing positions along that dimension axis.
+ * @author SCucos
+ *
+ * @param <T>
+ */
 public class Slice<T> {
 
 	private Map<Object, Collection<?>> slice = new HashMap<>();
@@ -57,17 +64,6 @@ public class Slice<T> {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
-	public static <K, V> Map<K, Collection<V>> toMap(Slice<Map<K, Collection<V>>> slice) {
-		Map<K, Collection<V>> map = new HashMap<>();
-		Map<Object, Collection<?>> sliceMap = slice.getMap();
-		
-		for(Object key : sliceMap.keySet()) {
-			map.put((K)key, (Collection<V>) sliceMap.get(key));
-		}
-		return map;
-	}
-	
 	public T toType(Class<T> cls) throws ObjectConstructionException {
 		T t = null;
 		try {
@@ -89,34 +85,8 @@ public class Slice<T> {
 		return t;
 	}
 	
-//	public static Object getFieldValue(Object targetObject, String fieldName) throws SliceConstructionException {
-//	    Field field;
-//	    try {
-//	        field = targetObject.getClass().getDeclaredField(fieldName);
-//	    } catch (NoSuchFieldException e) {
-//	        field = null;
-//	    }
-//	    Class<?> superClass = targetObject.getClass().getSuperclass();
-//	    while (field == null && superClass != null) {
-//	        try {
-//	            field = superClass.getDeclaredField(fieldName);
-//	        } catch (NoSuchFieldException e) {
-//	            superClass = superClass.getSuperclass();
-//	        }
-//	    }
-//	    if (field == null) {
-//	        throw new SliceConstructionException("Unable to find field '" + fieldName + "'");
-//	    }
-//	    field.setAccessible(true);
-//	    try {
-//	        return field.get(targetObject);
-//	    } catch (IllegalAccessException e) {
-//	    	throw new SliceConstructionException("Unable to access value from field '" + fieldName + "'");
-//	    }
-//	}
-	
 	@SuppressWarnings("unchecked")
-	public boolean setField(Object targetObject, String fieldName, Object fieldValue) {
+	private boolean setField(Object targetObject, String fieldName, Object fieldValue) {
 	    Field field;
 	    try {
 	        field = targetObject.getClass().getDeclaredField(fieldName);
@@ -159,6 +129,14 @@ public class Slice<T> {
 		return this.slice.get(category);
 	}
 	
+	public void deleteEntry(Object category) {
+		this.slice.remove(category);
+	}
+
+	public Map<Object, Collection<?>> getMap() {
+		return slice;
+	}
+	
 	@SuppressWarnings("unchecked")
 	public static <T, M, C extends Collection> C getFieldAsType(String category, Slice<T> slice, C collection) {
 		List<M> list = (List<M>) slice.getEntry(category)
@@ -171,11 +149,14 @@ public class Slice<T> {
 		return collection;
 	}
 	
-	protected void deleteEntry(Object category) {
-		this.slice.remove(category);
-	}
-
-	public Map<Object, Collection<?>> getMap() {
-		return slice;
+	@SuppressWarnings("unchecked")
+	public static <K, V> Map<K, Collection<V>> toMap(Slice<Map<K, Collection<V>>> slice) {
+		Map<K, Collection<V>> map = new HashMap<>();
+		Map<Object, Collection<?>> sliceMap = slice.getMap();
+		
+		for(Object key : sliceMap.keySet()) {
+			map.put((K)key, (Collection<V>) sliceMap.get(key));
+		}
+		return map;
 	}
 }

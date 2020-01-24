@@ -6,11 +6,24 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
+/**
+ * Abstract implementation that provides a recursive merging algorithm for turning a Set<Slice<T>> into a fully reduced Set<Slice<T>>.
+ * It accomplishes this by describing a N dimensional space (one dimensions for each unique category in a Slice<T>) and trying to form
+ * the largest possible sub-regions of the space with no overlap.
+ * 
+ * The Runtime is ~proportional to the N dimensional volume of the smallest super-slice 
+ * that contains all the incoming slices times the density of the contained points ( 0 < density <= 1 )
+ * For example if the majority of the contained points are approximately contained in one quarter of the 
+ * the smallest containing super-slice, it has a density of ~0.25 and thus runs 4x faster than if the
+ * same super-slice had a density of ~1.0.
+ * @author SCucos
+ *
+ * @param <T> The entity type that will be merged
+ */
 public abstract class AbstractReducer<T> implements Reducer<T> {
 
 	@Override
@@ -82,8 +95,6 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 			return slices;
 		}
 		
-		Set<Slice<T>> reduced = new HashSet<>();
-		
 		if(width == 1) {
 			Object category = collectionsQueue.poll().category;
 			Collection<Object> objects = slices
@@ -97,15 +108,13 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 						return accumulator;
 					});
 			
-			reduced.add(
-				new Slice<T>(
-					new HashMap() {{
-						put(category, objects);
-					}}
-				)
-			);
-			
-			return reduced;
+			return new HashSet() {{
+				add(new Slice<T>(
+						new HashMap() {{
+							put(category, objects);
+						}}
+				));
+			}};
 		}
 		 
 		CollectionNode mostNode = collectionsQueue.poll();
@@ -128,7 +137,7 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 				})
 				.collect(Collectors.toSet());
 		
-		reduced = reduce(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0)
+		Set<Slice<T>> reduced = reduce(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0)
 				.stream()
 				.map(r -> {
 					r.addEntry(category, mostObjects); // Get the width back to normal
@@ -155,9 +164,4 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 		}
 		return slices.iterator().next().getWidth();
 	}
-	
-	
-	
-	
-	
 }

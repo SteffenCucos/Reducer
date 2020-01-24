@@ -22,7 +22,7 @@ public class Main {
 			add(new Region("CAN", "Anchorage", 10));
 		}};
 		
-		
+		//If you have your entities as Maps of categories -> objects 
 		Reducer<Map<Integer, Collection<Long>>> mapReflectiveReducer = new AbstractReducer<Map<Integer, Collection<Long>>>() {
 			@Override
 			public Slice<Map<Integer, Collection<Long>>> toSlice(Map<Integer, Collection<Long>> t) throws SliceConstructionException {
@@ -35,7 +35,7 @@ public class Main {
 			}
 		};
 		
-		
+		//If you want to use reflection to merge all fields that are collections
 		Reducer<Region> reflectiveRegionReducer = new AbstractReducer<Region>() {
 			@Override
 			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
@@ -48,6 +48,7 @@ public class Main {
 			}
 		};
 		
+		//If you want to use custom logic for reducing your entities
 		Reducer<Region> customRegionReducer = new AbstractReducer<Region>() {
 			@Override
 			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
