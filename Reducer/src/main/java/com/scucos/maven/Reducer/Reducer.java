@@ -13,6 +13,8 @@ public interface Reducer<T> {
 	
 	Set<T> reduce(Set<T> ts);
 	
+	Set<Slice<T>> reduceSlices(Set<Slice<T>> slices);
+	
 	Slice<T> toSlice(T t) throws SliceConstructionException;
 	
 	T fromSlice(Slice<T> slice) throws ObjectConstructionException;

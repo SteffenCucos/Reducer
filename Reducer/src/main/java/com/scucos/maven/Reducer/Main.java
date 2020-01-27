@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.Map;
 
 import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
 import com.scucos.maven.Reducer.Slice.SliceConstructionException;
@@ -26,7 +25,7 @@ public class Main {
 		MapReducer<Integer, Collection<Long>> mapIntegerLongReducer = new MapReducer<Integer, Collection<Long>>();
 		
 		//If you want to use reflection to merge all fields that are collections
-		Reducer<Region> reflectiveRegionReducer = new AbstractReducer<Region>() {
+		Reducer<Region> reflectiveRegionReducer = new RecursiveReducer<Region>() {
 			@Override
 			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
 				return new Slice<>(region); // Reflection based toSlice
@@ -39,7 +38,7 @@ public class Main {
 		};
 		
 		//If you want to use custom logic for reducing your entities
-		Reducer<Region> customRegionReducer = new AbstractReducer<Region>() {
+		Reducer<Region> customRegionReducer = new RecursiveReducer<Region>() {
 			@Override
 			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
 				return new Slice<Region>() {{

@@ -6,7 +6,7 @@ import java.util.Map;
 import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
 import com.scucos.maven.Reducer.Slice.SliceConstructionException;
 
-public class MapReducer<K, V> extends AbstractReducer<Map<K, Collection<V>>> {	
+public class MapReducer<K, V> extends RecursiveReducer<Map<K, Collection<V>>> {	
 	@Override
 	public Slice<Map<K, Collection<V>>> toSlice(Map<K, Collection<V>> t) throws SliceConstructionException {
 		return new Slice<>(t);
