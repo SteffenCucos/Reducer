@@ -23,17 +23,7 @@ public class Main {
 		}};
 		
 		//If you have your entities as Maps of categories -> objects 
-		Reducer<Map<Integer, Collection<Long>>> mapReflectiveReducer = new AbstractReducer<Map<Integer, Collection<Long>>>() {
-			@Override
-			public Slice<Map<Integer, Collection<Long>>> toSlice(Map<Integer, Collection<Long>> t) throws SliceConstructionException {
-				return new Slice<>(t);
-			}
-
-			@Override
-			public Map<Integer, Collection<Long>> fromSlice(Slice<Map<Integer, Collection<Long>>> slice) throws ObjectConstructionException {
-				return Slice.toMap(slice);
-			}
-		};
+		MapReducer<Integer, Collection<Long>> mapIntegerLongReducer = new MapReducer<Integer, Collection<Long>>();
 		
 		//If you want to use reflection to merge all fields that are collections
 		Reducer<Region> reflectiveRegionReducer = new AbstractReducer<Region>() {
