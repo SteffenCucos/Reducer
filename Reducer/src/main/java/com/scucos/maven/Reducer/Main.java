@@ -1,8 +1,12 @@
 package com.scucos.maven.Reducer;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+
+import org.vena.service.utils.TwoTuple;
 
 import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
 import com.scucos.maven.Reducer.Slice.SliceConstructionException;
@@ -108,3 +112,78 @@ public class Main {
 		}
 	}
 }
+
+/**
+ * 	public Set<Map<CategoryType, Set<EntityType>>> mergeDistance(Set<Map<CategoryType, Set<EntityType>>> slices ) {
+		Set<Map<CategoryType, Set<EntityType>>> reduced = new HashSet<>();
+		int startSize = slices.size();
+		
+		while(slices.size() > 0) {
+			Map<CategoryType, Set<EntityType>> head = slices.stream().iterator().next();
+			slices.remove(head);
+			
+			Set<Map<CategoryType, Set<EntityType>>> leftOver = new HashSet<>();
+			for(Map<CategoryType, Set<EntityType>> slice : slices) {
+				TwoTuple<Integer, Integer> diffTuple = difference(head, slice);
+				int headIntoSlice = diffTuple.getO1();
+				int sliceIntoHead = diffTuple.getO2();
+				
+				if(headIntoSlice == 0 && sliceIntoHead == 1) {
+					//Slice is completely contained by head
+					//We can ignore it
+				} else if (headIntoSlice == 1 && sliceIntoHead == 0) {
+					//Head is contained completely by slice
+					//Replace head with slice?
+					head = slice;
+				} else if (headIntoSlice == 1 && sliceIntoHead == 1) {
+					//They differ in one spot exactly
+					head = mergeInto(slice, head);
+				} else {
+					leftOver.add(slice);
+				}
+			}
+			reduced.add(head);
+			slices = leftOver;
+		}
+
+		if(reduced.size() < startSize) {
+			return mergeDistance(reduced);
+		}
+		
+		return reduced;
+	}
+	
+	public TwoTuple<Integer, Integer> difference(Map<CategoryType, Set<EntityType>> s1, Map<CategoryType, Set<EntityType>> s2) {
+		Set<CategoryType> categories = s1.keySet();
+		int S1IntoS2 = categories.size();
+		int S2IntoS1 = categories.size();
+		
+		for(CategoryType category : categories) {
+			Set<EntityType> e1 = s1.get(category);
+			Set<EntityType> e2 = s2.get(category);
+			if(e1.containsAll(e2)) {
+				S2IntoS1 -= 1;
+			}
+			if(e2.containsAll(e1)) {
+				S1IntoS2 -= 1;
+			}
+		}
+		
+		return new TwoTuple<Integer, Integer>(S1IntoS2, S2IntoS1);
+	}
+	
+	private Map<CategoryType, Set<EntityType>> mergeInto(Map<CategoryType, Set<EntityType>> s1, Map<CategoryType, Set<EntityType>> s2) {
+		Set<CategoryType> categories = s1.keySet();
+		Map<CategoryType, Set<EntityType>> mergedSlice = new HashMap<>();
+		for(CategoryType category : categories) {
+			Set<EntityType> e1 = s1.get(category);
+			Set<EntityType> e2 = s2.get(category);
+			@SuppressWarnings("unchecked")
+			Set<EntityType> merged = new HashSet() {{
+				addAll(e1);
+				addAll(e2);
+			}};
+			mergedSlice.put(category, merged);
+		}
+		return mergedSlice;
+	} */
