@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
  */
 public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 
+	private static boolean CONTAINS_MOST = true;
+	private static boolean WITHOUT_MOST = false;
+	
 	@Override
 	public Set<Slice<T>> reduceSlices(Set<Slice<T>> slices) {
 		// TODO Auto-generated method stub
@@ -52,6 +55,10 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 	
 	PriorityQueue<CollectionNode> buildCollectionCounts(Set<Slice<T>> slices) {
 		PriorityQueue<CollectionNode> queue = new PriorityQueue<>();
+		
+		if(slices.size() == 0) {
+			return queue;
+		}
 		
 		Map<Collection<?>, Integer> collectionCountMap = new HashMap<>();
 		Map<Collection<?>, Object> collectionCategoryMap = new HashMap<>();
@@ -119,7 +126,7 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 		
 		Map<Boolean, List<Slice<T>>> partition = slices.stream().collect(Collectors.partitioningBy(s -> s.getEntry(category).equals(mostObjects)));
 		
-		Set<Slice<T>> slicesContainingMost = partition.get(true)
+		Set<Slice<T>> slicesContainingMost = partition.get(CONTAINS_MOST)
 				.stream()
 				.map(s -> { 
 					s.deleteEntry(category); //Remove this section of the slice to reduce width
@@ -127,7 +134,9 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 				})
 				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> reduced = reduceRecursive(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0)
+		Set<Slice<T>> slicesWithoutMost = partition.get(WITHOUT_MOST).stream().collect(Collectors.toSet());
+		
+		Set<Slice<T>> reducedMost = reduceRecursive(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0)
 				.stream()
 				.map(r -> {
 					r.addEntry(category, mostObjects); // Get the width back to normal
@@ -135,7 +144,10 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 				})
 				.collect(Collectors.toSet());
 		
-		reduced.addAll(partition.get(false));
+		Set<Slice<T>> reduceWithoutMost = reduceRecursive(slicesWithoutMost, buildCollectionCounts(slicesWithoutMost), width, slicesWithoutMost.size(), 0);
+		
+		Set<Slice<T>> reduced = reducedMost;
+		reduced.addAll(reduceWithoutMost);
 		
 		if(reduced.size() == prevSize && secondTry == 0) {
 			reduced = reduceRecursive(reduced, collectionsQueue, width, reduced.size(), 1); // Try again, there may be a better splitting
