@@ -73,11 +73,7 @@ public class Main {
 	public static void time(Reducer<Region> reducer) {
 		for(int i = 1; i < 4; i++) {
 			Set<Region> large = makeLargeRegion(i);
-			int size = large.size();
-			long startTime = System.currentTimeMillis();
 			Set<Region> reduced = reducer.reduce(large);
-			long endTime = System.currentTimeMillis();
-			System.out.println(size + " Points took "  + (endTime - startTime) + " milliseconds");
 		}
 	}
 	

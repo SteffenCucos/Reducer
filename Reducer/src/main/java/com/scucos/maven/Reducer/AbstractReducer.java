@@ -7,12 +7,15 @@ public abstract class AbstractReducer<T> implements Reducer<T> {
 
 	@Override
 	public Set<T> reduce(Set<T> ts) {
+		
 		Set<Slice<T>> slices = ts
 				.stream()
 				.map(t -> toSlice(t))
 				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> reduced = reduceSlices(slices);
+		Set<Slice<T>> reduced = Reducer.time("Reduce", () -> {
+			return reduceSlices(slices);
+		});
 		
 		return reduced
 				.stream()
