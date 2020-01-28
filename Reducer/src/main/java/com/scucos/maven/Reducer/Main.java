@@ -1,9 +1,7 @@
 package com.scucos.maven.Reducer;
 
 import java.util.Collection;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
@@ -11,21 +9,26 @@ import com.scucos.maven.Reducer.Slice.SliceConstructionException;
 
 public class Main {
 
+	public static Set<Region> makeLargeRegion(int multiplier) {
+		Set<Region> cubicRegion = new HashSet<>();
+		for(int x = 0; x < multiplier; x++) {
+			for(int y = 0; y < 300; y++) {
+				for(int z = 0; z < 300; z++) {
+					cubicRegion.add(new Region(String.valueOf(x), String.valueOf(y), z));
+				}
+			}
+		}
+		
+		return cubicRegion;
+	}
+	
 	@SuppressWarnings("unchecked" )
 	public static void main(String[] args) {
-		
-		Set<Region> regions = new HashSet() {{
-			add(new Region("USA", "Anchorage", 10));
-			add(new Region("USA", "Juno", 5));
-			add(new Region("CAN", "Juno", 5));
-			add(new Region("CAN", "Anchorage", 10));
-		}};
-		
 		//If you have your entities as Maps of categories -> objects 
 		MapReducer<Integer, Collection<Long>> mapIntegerLongReducer = new MapReducer<Integer, Collection<Long>>();
 		
 		//If you want to use reflection to merge all fields that are collections
-		Reducer<Region> reflectiveRegionReducer = new RecursiveReducer<Region>() {
+		Reducer<Region> recursiveReducer = new RecursiveReducer<Region>() {
 			@Override
 			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
 				return new Slice<>(region); // Reflection based toSlice
@@ -38,7 +41,7 @@ public class Main {
 		};
 		
 		//If you want to use custom logic for reducing your entities
-		Reducer<Region> customRegionReducer = new RecursiveReducer<Region>() {
+		Reducer<Region> distanceReducer = new DistanceReducer<Region>() {
 			@Override
 			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
 				return new Slice<Region>() {{
@@ -53,21 +56,36 @@ public class Main {
 				Set<String> countries = Slice.getFieldAsType("countries", slice, new HashSet<>());
 				//Set<String> states = Slice.getAsType("states", slice, new HashSet<>());
 				Set<String> cities = Slice.getFieldAsType("cities", slice, new HashSet<>());
-				List<Integer> populations = Slice.getFieldAsType("populations", slice, new ArrayList<>());
+				Set<Integer> populations = Slice.getFieldAsType("populations", slice, new HashSet<>());
 				return new Region(countries, cities, populations);
 			}
 		};
+	 	
+		System.out.println("Recursive");
+		time(recursiveReducer);
 		
-		Set<Region> reflectiveReduced = reflectiveRegionReducer.reduce(regions);
-		Set<Region> customReduced = customRegionReducer.reduce(regions);
+		System.out.println("Distance");
+		time(distanceReducer);
+		
 		return;
+	}
+	
+	public static void time(Reducer<Region> reducer) {
+		for(int i = 1; i < 4; i++) {
+			Set<Region> large = makeLargeRegion(i);
+			int size = large.size();
+			long startTime = System.currentTimeMillis();
+			Set<Region> reduced = reducer.reduce(large);
+			long endTime = System.currentTimeMillis();
+			System.out.println(size + " Points took "  + (endTime - startTime) + " milliseconds");
+		}
 	}
 	
 	public static class Region {
 		public Set<String> countries;
 		//public Set<String> states;
 		public Set<String> cities;
-		public List<Integer> populations;
+		public Set<Integer> populations;
 		
 		public Region() {
 			
@@ -78,10 +96,10 @@ public class Main {
 			this.countries = new HashSet() {{ add(country); }};
 			//this.states = new HashSet() {{ add(state); }};
 			this.cities = new HashSet() {{ add(city); }};
-			this.populations = new ArrayList() {{ add(population); }};
+			this.populations = new HashSet() {{ add(population); }};
 		}
 		
-		public Region(Set<String> countries, Set<String> cities, List<Integer> populations) {
+		public Region(Set<String> countries, Set<String> cities, Set<Integer> populations) {
 			this.countries = countries;
 			//this.states = states;
 			this.cities = cities;

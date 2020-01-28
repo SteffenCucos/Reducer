@@ -3,6 +3,7 @@ package com.scucos.maven.Reducer;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +43,39 @@ public class Slice<T> {
 		this.slice = slice;
 	}
 	
+	public Object mergeInto(Slice<T> into) {
+		
+		Object diffCategory = null;
+		
+		for(Object category : getCategories()) {
+			Collection<?> otherObjects = into.getEntry(category);
+			Collection<?> thisObjects = this.getEntry(category);
+			if(!otherObjects.containsAll(thisObjects) && diffCategory == null) {
+				diffCategory = category;
+			} else if (!otherObjects.containsAll(thisObjects) && diffCategory != null) {
+				return null;
+			}
+		}
+		//completely Contained
+		return diffCategory;
+	}
+	
+	public boolean containedIn(Slice<T> into) {
+		for(Object category : getCategories()) {
+			Collection<?> otherObjects = into.getEntry(category);
+			Collection<?> thisObjects = this.getEntry(category);
+			if(!otherObjects.containsAll(thisObjects)) {
+				return false;
+			} 
+		}
+		//completely Contained
+		return true;
+	}
+	
+	public void merge(Object category, Slice<T> into) {
+		Collection<?> thisObjects = this.getEntry(category);
+		into.addObjects(category,thisObjects);
+	}
 	
 	@SuppressWarnings("unchecked")
 	public Slice(T t) throws SliceConstructionException {
@@ -133,6 +167,12 @@ public class Slice<T> {
 		this.slice.remove(category);
 	}
 
+	@SuppressWarnings("unchecked")
+	public void addObjects(Object category, Collection<?> objects) {
+		Collection<Object> thisObjects = (Collection<Object>) this.getEntry(category);
+		thisObjects.addAll(objects);
+	}
+	
 	public Map<Object, Collection<?>> getMap() {
 		return slice;
 	}
@@ -157,6 +197,11 @@ public class Slice<T> {
 		for(Object key : sliceMap.keySet()) {
 			map.put((K)key, (Collection<V>) sliceMap.get(key));
 		}
+		
 		return map;
+	}
+	
+	public String toString() {
+		return slice.toString();
 	}
 }
