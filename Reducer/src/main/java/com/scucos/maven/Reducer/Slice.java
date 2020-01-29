@@ -43,23 +43,6 @@ public class Slice<T> {
 		this.slice = slice;
 	}
 	
-	public Object mergeInto(Slice<T> into) {
-		
-		Object diffCategory = null;
-		
-		for(Object category : getCategories()) {
-			Collection<?> otherObjects = into.getEntry(category);
-			Collection<?> thisObjects = this.getEntry(category);
-			if(!otherObjects.containsAll(thisObjects) && diffCategory == null) {
-				diffCategory = category;
-			} else if (!otherObjects.containsAll(thisObjects) && diffCategory != null) {
-				return null;
-			}
-		}
-		//completely Contained
-		return diffCategory;
-	}
-	
 	public boolean containedIn(Slice<T> into) {
 		for(Object category : getCategories()) {
 			Collection<?> otherObjects = into.getEntry(category);
@@ -72,9 +55,22 @@ public class Slice<T> {
 		return true;
 	}
 	
-	public void merge(Object category, Slice<T> into) {
-		Collection<?> thisObjects = this.getEntry(category);
-		into.addObjects(category,thisObjects);
+	public Set<Object> asymetricDifference(Slice<T> into) {
+		Set<Object> diffCategories = new HashSet<>();
+		for(Object category : getCategories()) {
+			Collection<?> otherObjects = into.getEntry(category);
+			Collection<?> thisObjects = this.getEntry(category);
+			if(!otherObjects.containsAll(thisObjects) || !thisObjects.containsAll(otherObjects)) {
+				diffCategories.add(category);
+			}
+		}
+	
+		return diffCategories;
+	}
+	
+	public void unionAdd(Object category, Slice<T> other) {
+		Collection<?> otherObjects = other.getEntry(category);
+		addObjects(category, otherObjects);
 	}
 	
 	@SuppressWarnings("unchecked")

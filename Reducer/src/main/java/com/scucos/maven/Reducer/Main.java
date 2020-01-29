@@ -12,8 +12,8 @@ public class Main {
 	public static Set<Region> makeLargeRegion(int multiplier) {
 		Set<Region> cubicRegion = new HashSet<>();
 		for(int x = 0; x < multiplier; x++) {
-			for(int y = 0; y < 300; y++) {
-				for(int z = 0; z < 300; z++) {
+			for(int y = 0; y < 200; y++) {
+				for(int z = 0; z < 200; z++) {
 					cubicRegion.add(new Region(String.valueOf(x), String.valueOf(y), z));
 				}
 			}
@@ -81,8 +81,7 @@ public class Main {
 			}
 		};
 	 	
-//		System.out.println("Recursive");
-//		time(recursiveReducer);
+
 		
 		System.out.println("Distance");
 		time(distanceReducer);
@@ -90,13 +89,17 @@ public class Main {
 		System.out.println("DistanceV2");
 		time(distanceReducerV2);
 		
+		System.out.println("Recursive");
+		time(recursiveReducer);
+		
 		return;
 	}
 	
 	public static void time(Reducer<Region> reducer) {
-		for(int i = 1; i < 4; i++) {
+		for(int i = 1; i < 6; i++) {
 			Set<Region> large = makeLargeRegion(i);
 			Set<Region> reduced = reducer.reduce(large);
+			int size = reduced.size();
 		}
 	}
 	
