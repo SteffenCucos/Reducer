@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-public abstract class DistanceReducerV2<T> extends AbstractReducer<T> {
+public abstract class DistanceReducerV2<T> implements Reducer<T> {
 
 	@Override
 	public Set<Slice<T>> reduceSlices(Set<Slice<T>> slices) {

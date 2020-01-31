@@ -24,17 +24,21 @@ import java.util.stream.Collectors;
  *
  * @param <T> The entity type that will be merged
  */
-public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
+public abstract class RecursiveReducer<T> implements Reducer<T> {
 
 	private static boolean CONTAINS_MOST = true;
 	private static boolean WITHOUT_MOST = false;
 	
 	@Override
 	public Set<Slice<T>> reduceSlices(Set<Slice<T>> slices) {
-		// TODO Auto-generated method stub
-		return reduceRecursive(slices, buildCollectionCounts(slices), getWidth(slices), slices.size(), 0);
+		return reduceRecursive(slices, buildCollectionCounts(slices), getWidth(slices), 0);
 	}	
 	
+	/**
+	 * Container class that's used to track a Collection of objects, 
+	 * what category they belong to, and the collections count across all slices
+	 * @author SCucos
+	 */
 	public class CollectionNode implements Comparable<CollectionNode> {
 		public Collection<?> objects;
 		public Object category;
@@ -53,6 +57,13 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 		}
 	}
 	
+	/**
+	 * Constructs a PriorityQueue<CollectionNode> that is ordered by the nodes count parameter. 
+	 * The queue will contain a node for each unique Collection<?> of objects across all of 
+	 * the supplied slices categories.
+	 * @param slices
+	 * @return
+	 */
 	PriorityQueue<CollectionNode> buildCollectionCounts(Set<Slice<T>> slices) {
 		PriorityQueue<CollectionNode> queue = new PriorityQueue<>();
 		
@@ -86,8 +97,35 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 		return queue;
 	}
 	
+	/**
+	 * The main algorithm used for reducing slices.
+	 * Several invariants must be continually satisfied 
+	 * for this to produce correct (or coherent) results, 
+	 * and many bugs such as NPEs are possible when these invariants fail
+	 * Invariants:
+	 * 	1) All Slice<T>s provided in the slices argument have the same number of and types of categories
+	 *  2) collectionsQueue was computed using the incoming slices (the counts are correct)
+	 *  3) width is equal to getWidth(slices)
+	 *  4) secondTry is 1 only if this call is the second try with the same set of slices
+	 *  
+	 *  Calls to the method reduceSlices(Set<Slice<T>> slices) should 
+	 *  always run successfully and will maintain the invariants properly.
+	 * 
+	 * Another important aspect of this algorithm is that it works 
+	 * best when the initial slices are all point slices (that is 
+	 * they are slices that "unravel" into a single point)
+	 * It's this assumption that allows us to get fairly linear runtime, 
+	 * whereas a more comprehensive algorithm that could work on slices 
+	 * in general may have worse runtime characteristics.
+	 * 
+	 * @param slices
+	 * @param collectionsQueue
+	 * @param width
+	 * @param secondTry
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
-	private Set<Slice<T>> reduceRecursive(Set<Slice<T>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int prevSize, int secondTry) {
+	private Set<Slice<T>> reduceRecursive(Set<Slice<T>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int secondTry) {
 		if(slices.isEmpty() || slices.size() == 1 || width == 0) {
 			return slices;
 		}
@@ -113,9 +151,10 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 				));
 			}};
 		}
-		 
-		CollectionNode mostNode = collectionsQueue.poll();
 		
+		int prevSize = slices.size();
+		
+		CollectionNode mostNode = collectionsQueue.poll();
 		Collection<?> mostObjects = mostNode.objects;
 		Object category = mostNode.category;
 		Integer count = mostNode.count;
@@ -136,7 +175,7 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 		
 		Set<Slice<T>> slicesWithoutMost = partition.get(WITHOUT_MOST).stream().collect(Collectors.toSet());
 		
-		Set<Slice<T>> reducedMost = reduceRecursive(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, slicesContainingMost.size(), 0)
+		Set<Slice<T>> reducedMost = reduceRecursive(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, 0)
 				.stream()
 				.map(r -> {
 					r.addEntry(category, mostObjects); // Get the width back to normal
@@ -144,22 +183,27 @@ public abstract class RecursiveReducer<T> extends AbstractReducer<T> {
 				})
 				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> reduceWithoutMost = reduceRecursive(slicesWithoutMost, buildCollectionCounts(slicesWithoutMost), width, slicesWithoutMost.size(), 0);
+		Set<Slice<T>> reduceWithoutMost = reduceRecursive(slicesWithoutMost, buildCollectionCounts(slicesWithoutMost), width, 0);
 		
 		Set<Slice<T>> reduced = reducedMost;
 		reduced.addAll(reduceWithoutMost);
 		
 		if(reduced.size() == prevSize && secondTry == 0) {
-			reduced = reduceRecursive(reduced, collectionsQueue, width, reduced.size(), 1); // Try again, there may be a better splitting
+			reduced = reduceRecursive(reduced, collectionsQueue, width, 1); // Try again, there may be a better splitting
 		}
 		
 		if(reduced.size() < prevSize || prevSize == 0) {
-			return reduceRecursive(reduced, buildCollectionCounts(reduced), width, reduced.size(), 0);
+			return reduceRecursive(reduced, buildCollectionCounts(reduced), width, 0);
 		}
 		
 		return reduced;
 	}
 	
+	/**
+	 * Helper method for getting the number of categories in the slices (width)
+	 * @param slices
+	 * @return
+	 */
 	private int getWidth(Set<Slice<T>> slices) {
 		if(slices.size() == 0) {
 			return 0;

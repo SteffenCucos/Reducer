@@ -3,8 +3,11 @@ package com.scucos.maven.Reducer;
 import java.util.Set;
 import java.util.HashSet;
 
-public abstract class DistanceReducer<T> extends AbstractReducer<T> {
+public abstract class DistanceReducer<T> implements Reducer<T> {
 
+	/**
+	 * 
+	 */
 	@Override
 	public Set<Slice<T>> reduceSlices(Set<Slice<T>> slices) {
 		
@@ -44,15 +47,6 @@ public abstract class DistanceReducer<T> extends AbstractReducer<T> {
 		if(reduced.size() < prevSize) {
 			return reduceSlices(reduced);
 		}
-		
-//		while(reduced.size() < prevSize) {
-//			reduced = new HashSet<>();
-//			prevSize = slices.size();
-//			
-//			main loop goes here
-		
-//			slices = reduced;
-//		}
 	
 		return reduced;
 	}
