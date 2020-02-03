@@ -12,8 +12,8 @@ public class Main {
 	public static Set<Region> makeLargeRegion(int multiplier) {
 		Set<Region> cubicRegion = new HashSet<>();
 		for(int x = 0; x < multiplier; x++) {
-			for(int y = 0; y < 200; y++) {
-				for(int z = 0; z < 200; z++) {
+			for(int y = 0; y < 50; y++) {
+				for(int z = 0; z < 50; z++) {
 					cubicRegion.add(new Region(String.valueOf(x), String.valueOf(y), z));
 				}
 			}
@@ -60,37 +60,14 @@ public class Main {
 				return new Region(countries, cities, populations);
 			}
 		};
-		
-		Reducer<Region> distanceReducerV2 = new DistanceReducerV2<Region>() {
-			@Override
-			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
-				return new Slice<Region>() {{
-					addEntry("countries", region.countries);
-					addEntry("cities", region.cities);
-					addEntry("populations", region.populations);
-				}};
-			}
-			
-			@Override
-			public Region fromSlice(Slice<Region> slice) throws ObjectConstructionException {
-				Set<String> countries = Slice.getFieldAsType("countries", slice, new HashSet<>());
-				//Set<String> states = Slice.getAsType("states", slice, new HashSet<>());
-				Set<String> cities = Slice.getFieldAsType("cities", slice, new HashSet<>());
-				Set<Integer> populations = Slice.getFieldAsType("populations", slice, new HashSet<>());
-				return new Region(countries, cities, populations);
-			}
-		};
 	 	
 
 		
 		System.out.println("Distance");
 		time(distanceReducer);
 		
-		System.out.println("DistanceV2");
-		time(distanceReducerV2);
-		
-		System.out.println("Recursive");
-		time(recursiveReducer);
+//		System.out.println("Recursive");
+//		time(recursiveReducer);
 		
 		return;
 	}

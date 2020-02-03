@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.scucos.maven.Reducer.RecursiveReducer.CollectionNode;
+
 /**
  * Slice<T> objects are used to encapsulate a rectangular slice of the N dimensional space formed from a Set<Slice<T>> objects
  * The slice keeps track of a list of categories (dimension identifiers) as well as a Collection<Object> for each category
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
  *
  * @param <T>
  */
-public class Slice<T> {
+public class Slice<T> implements Comparable<Slice<T>> {
 
 	private Map<Object, Collection<?>> slice = new HashMap<>();
 	
@@ -42,6 +44,8 @@ public class Slice<T> {
 	public Slice(Map<Object, Collection<?>> slice) {
 		this.slice = slice;
 	}
+	
+
 	
 	public boolean containedIn(Slice<T> into) {
 		for(Object category : getCategories()) {
@@ -199,5 +203,16 @@ public class Slice<T> {
 	
 	public String toString() {
 		return slice.toString();
+	}
+	
+	public int volume() {
+		return this.getMap().values().stream().map(c -> c.size()).reduce(1, (accumulator, current) -> accumulator*current);
+	}
+	
+	@Override
+	public int compareTo(Slice<T> other) {
+		int otherVolume = other.volume();
+		int volume = volume();
+		return (volume > otherVolume) ? -1 : (volume == otherVolume) ? 0 : 1;
 	}
 }

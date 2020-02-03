@@ -2,24 +2,29 @@ package com.scucos.maven.Reducer;
 
 import java.util.Set;
 import java.util.HashSet;
+import java.util.PriorityQueue;
 
 public abstract class DistanceReducer<T> implements Reducer<T> {
 
 	/**
 	 * 
 	 */
+	@SuppressWarnings("serial")
 	@Override
 	public Set<Slice<T>> reduceSlices(Set<Slice<T>> slices) {
 		
 		int prevSize = slices.size();
+		
+		PriorityQueue<Slice<T>> slicesQueue = new PriorityQueue<>();
+		slicesQueue.addAll(slices);
+		
 		Set<Slice<T>> reduced = new HashSet<>();
 		
-		while (slices.size() > 0) {
+		while (slicesQueue.size() > 0) {
 			Set<Slice<T>> leftover = new HashSet<>();
-			Slice<T> head = slices.stream().iterator().next();
-			slices.remove(head);
+			Slice<T> head = slicesQueue.poll();
 			
-			for(Slice<T> slice : slices) {
+			for(Slice<T> slice : slicesQueue) {
 				if(slice.containedIn(head)) {
 					continue;
 				}
@@ -27,7 +32,6 @@ public abstract class DistanceReducer<T> implements Reducer<T> {
 					head = slice;
 					continue;
 				}
-				
 				
 				Set<Object> differentCategories = slice.asymetricDifference(head);
 				int distance = differentCategories.size();
@@ -41,7 +45,9 @@ public abstract class DistanceReducer<T> implements Reducer<T> {
 			}
 			
 			reduced.add(head);
-			slices = leftover;	
+			slicesQueue = new PriorityQueue<Slice<T>>() {{
+				addAll(leftover);	
+			}};
 		}
 		
 		if(reduced.size() < prevSize) {
