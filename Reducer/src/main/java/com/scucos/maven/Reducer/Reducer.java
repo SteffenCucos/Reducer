@@ -12,6 +12,7 @@ import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
  * @param <T> the type of object that will be reduced
  */
 public interface Reducer<T> {
+	
 	/**
 	 * Default reduce method that handles turning Ts into Slice<T>s, 
 	 * dispatching to the correct reduceSlices method, and turning the reduced 
@@ -20,6 +21,7 @@ public interface Reducer<T> {
 	 * @return
 	 */
 	default Set<T> reduce(Set<T> ts) {
+		int oldSize = ts.size();
 		
 		Set<Slice<T>> slices = ts
 				.stream()
@@ -29,6 +31,10 @@ public interface Reducer<T> {
 		Set<Slice<T>> reduced = time("Reduce", () -> {
 			return reduceSlices(slices);
 		});
+		
+		int afterSize = reduced.size();
+		
+		System.out.println(String.format("Reduced %s object(s) to %s slice(s)", oldSize, afterSize));
 		
 		return reduced
 				.stream()
@@ -59,13 +65,13 @@ public interface Reducer<T> {
 	 */
 	T fromSlice(Slice<T> slice) throws ObjectConstructionException;
 	
-	
 	/**
 	 * Dummy interface for taking a lambda argument
 	 */
 	interface timeable {
 		Object run();
 	}
+	
 	/**
 	 * Runs a lambda and logs the execution time in milliseconds, 
 	 * while also managing the returned result.

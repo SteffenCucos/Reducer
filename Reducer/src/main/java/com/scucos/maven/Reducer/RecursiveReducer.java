@@ -29,9 +29,15 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 	private static boolean CONTAINS_MOST = true;
 	private static boolean WITHOUT_MOST = false;
 	
+	static long calls = 0;
+	
 	@Override
 	public Set<Slice<T>> reduceSlices(Set<Slice<T>> slices) {
-		return reduceRecursive(slices, buildCollectionCounts(slices), getWidth(slices), 0);
+		Set<Slice<T>> reduced = reduceRecursive(slices, getWidth(slices));
+		
+		System.out.println(String.format("%s calls to buildQueue", calls));
+		calls = 0;
+		return reduced;
 	}	
 	
 	/**
@@ -53,18 +59,19 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 		@Override
 		public int compareTo(CollectionNode other) {
 			Integer otherCount = other.count;
-			return (count > other.count) ? -1 : (count == otherCount) ? 0 : 1;
+			return (count > otherCount) ? -1 : (count == otherCount) ? 0 : 1;
 		}
 	}
 	
 	/**
 	 * Constructs a PriorityQueue<CollectionNode> that is ordered by the nodes count parameter. 
 	 * The queue will contain a node for each unique Collection<?> of objects across all of 
-	 * the supplied slices categories.
+	 * the supplied slices categories. O(slice.width * slices.size())
 	 * @param slices
 	 * @return
 	 */
 	PriorityQueue<CollectionNode> buildCollectionCounts(Set<Slice<T>> slices) {
+		calls += 1;
 		PriorityQueue<CollectionNode> queue = new PriorityQueue<>();
 		
 		if(slices.size() == 0) {
@@ -106,7 +113,6 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 	 * 	1) All Slice<T>s provided in the slices argument have the same number of and types of categories
 	 *  2) collectionsQueue was computed using the incoming slices (the counts are correct)
 	 *  3) width is equal to getWidth(slices)
-	 *  4) secondTry is 1 only if this call is the second try with the same set of slices
 	 *  
 	 *  Calls to the method reduceSlices(Set<Slice<T>> slices) should 
 	 *  always run successfully and will maintain the invariants properly.
@@ -125,10 +131,12 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	private Set<Slice<T>> reduceRecursive(Set<Slice<T>> slices, PriorityQueue<CollectionNode> collectionsQueue, int width, int secondTry) {
+	private Set<Slice<T>> reduceRecursive(Set<Slice<T>> slices, int width) {
 		if(slices.isEmpty() || slices.size() == 1 || width == 0) {
 			return slices;
 		}
+		
+		PriorityQueue<CollectionNode> collectionsQueue = buildCollectionCounts(slices);
 		
 		if(width == 1) {
 			Object category = collectionsQueue.poll().category;
@@ -143,57 +151,59 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 						return accumulator;
 					});
 			
-			return new HashSet() {{
-				add(new Slice<T>(
-						new HashMap() {{
-							put(category, objects);
-						}}
-				));
-			}};
+			
+			Map<Object, Collection<?>> sliceMap = new HashMap<>();
+			sliceMap.put(category, objects);
+			Slice<T> mergedSlice = new Slice<T>(sliceMap);
+			Set<Slice<T>> mergedSliceSet = new HashSet<>();
+			mergedSliceSet.add(mergedSlice);
+			
+			return mergedSliceSet;
 		}
 		
 		int prevSize = slices.size();
 		
 		CollectionNode mostNode = collectionsQueue.poll();
 		Collection<?> mostObjects = mostNode.objects;
-		Object category = mostNode.category;
-		Integer count = mostNode.count;
+		Object mostCategory = mostNode.category;
+		Integer mostCount = mostNode.count;
 		
-		if(count == 1) { // No merging is possible, all collections are unique
+		if(mostCount == 1) { // No merging is possible, all collections are unique
 			return slices;
 		}
 		
-		Map<Boolean, List<Slice<T>>> partition = slices.stream().collect(Collectors.partitioningBy(s -> s.getEntry(category).equals(mostObjects)));
+		Map<Boolean, List<Slice<T>>> partition = slices.stream().collect(Collectors.partitioningBy(s -> s.getEntry(mostCategory).equals(mostObjects)));
 		
 		Set<Slice<T>> slicesContainingMost = partition.get(CONTAINS_MOST)
 				.stream()
 				.map(s -> { 
-					s.deleteEntry(category); //Remove this section of the slice to reduce width
+					//Remove this section of the slice to reduce width
+					s.deleteEntry(mostCategory);
 					return s;
 				})
 				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> slicesWithoutMost = partition.get(WITHOUT_MOST).stream().collect(Collectors.toSet());
+		Set<Slice<T>> slicesWithoutMost = partition.get(WITHOUT_MOST)
+				.stream()
+				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> reducedMost = reduceRecursive(slicesContainingMost, buildCollectionCounts(slicesContainingMost), width - 1, 0)
+		Set<Slice<T>> reducedMost = reduceRecursive(slicesContainingMost, width - 1)
 				.stream()
 				.map(r -> {
-					r.addEntry(category, mostObjects); // Get the width back to normal
+					// Get the width back to normal
+					r.addEntry(mostCategory, mostObjects);
 					return r;
 				})
 				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> reduceWithoutMost = reduceRecursive(slicesWithoutMost, buildCollectionCounts(slicesWithoutMost), width, 0);
+		Set<Slice<T>> reduceWithoutMost = reduceRecursive(slicesWithoutMost, width);
 		
-		Set<Slice<T>> reduced = reducedMost;
+		Set<Slice<T>> reduced = new HashSet<Slice<T>>();
+		reduced.addAll(reducedMost);
 		reduced.addAll(reduceWithoutMost);
 		
-		if(reduced.size() == prevSize && secondTry == 0) {
-			reduced = reduceRecursive(reduced, collectionsQueue, width, 1); // Try again, there may be a better splitting
-		}
-		
 		if(reduced.size() < prevSize || prevSize == 0) {
-			return reduceRecursive(reduced, buildCollectionCounts(reduced), width, 0);
+			return reduceRecursive(reduced, width);
 		}
 		
 		return reduced;
