@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.scucos.maven.Reducer.Reducers.ReflectionUtils;
+import com.scucos.maven.Reducer.Reducers.ReflectionUtils.ObjectConstructionException;
+
 /**
  * Slice<T> objects are used to encapsulate a rectangular slice of the N dimensional space formed from a Set<Slice<T>> objects
  * The slice keeps track of a list of categories (dimension identifiers) as well as a Collection<Object> for each category
@@ -18,20 +21,13 @@ import java.util.Set;
  */
 public class Slice<T> implements Comparable<Slice<T>> {
 
-	private Map<Object, Collection<?>> sliceMap = new HashMap<>();
+	private Map<String, Collection<?>> sliceMap = new HashMap<>();
 	
 	private Class<T> tClass;
 	
 	@SuppressWarnings("serial")
 	public static class SliceConstructionException extends RuntimeException {
 		public SliceConstructionException(String error) {
-			super(error);
-		}
-	}
-	
-	@SuppressWarnings("serial")
-	public static class ObjectConstructionException extends RuntimeException {
-		public ObjectConstructionException(String error) {
 			super(error);
 		}
 	}
@@ -68,11 +64,11 @@ public class Slice<T> implements Comparable<Slice<T>> {
 		return this.sliceMap.size();
 	}
 	
-	public Set<Object> getCategories() {
+	public Set<String> getCategories() {
 		return this.sliceMap.keySet();
 	}
 	
-	public void addEntry(Object category, Collection<?> objects) {
+	public void addEntry(String category, Collection<?> objects) {
 		this.sliceMap.put(category, objects);
 	}
 	
@@ -90,7 +86,7 @@ public class Slice<T> implements Comparable<Slice<T>> {
 		thisObjects.addAll(objects);
 	}
 	
-	public Map<Object, Collection<?>> getMap() {
+	public Map<String, Collection<?>> getMap() {
 		return sliceMap;
 	}
 	
@@ -144,8 +140,6 @@ public class Slice<T> implements Comparable<Slice<T>> {
 		addObjects(category, otherObjects);
 	}
 	
-	// Reflection utility methods
-	
 	@SuppressWarnings("unchecked")
 	public static <T, M, C extends Collection<M>> C getFieldAsType(String category, Slice<T> slice) {
 		return (C) slice.getEntry(category);
@@ -162,57 +156,8 @@ public class Slice<T> implements Comparable<Slice<T>> {
 		return map;
 	}
 	
+	// Reflection utility methods
 	public T toType() throws ObjectConstructionException {
-		
-		if (tClass == null) {
-			throw new ObjectConstructionException("Slice instance is missing T class object\n");
-		}
-		
-		T t = null;
-		try {
-			t = (T) tClass.newInstance();
-		} catch (InstantiationException e) {
-			throw new ObjectConstructionException("Class '" + tClass.toString() + "' does not have empty constructor\n" + e.toString());
-		} catch (IllegalAccessException e) {
-			throw new ObjectConstructionException("Unable to create object of type '" + tClass.getCanonicalName() + "'\n" + e.toString());
-		}
-		
-		for (Object field : sliceMap.keySet()) {
-			Collection<?> objects = sliceMap.get(field);
-			String fieldName = (String)field;
-			if (!setField(t, fieldName, objects)) {
-				throw new ObjectConstructionException("Unable to set field '" + fieldName + "' while constructing object");
-			}
-		}
-
-		return t;
-	}
-	
-	@SuppressWarnings("unchecked")
-	private boolean setField(Object targetObject, String fieldName, Object fieldValue) {
-	    Field field;
-	    try {
-	        field = targetObject.getClass().getDeclaredField(fieldName);
-	    } catch (NoSuchFieldException e) {
-	        field = null;
-	    }
-	    Class<? super T> superClass = (Class<? super T>) targetObject.getClass().getSuperclass();
-	    while (field == null && superClass != null) {
-	        try {
-	            field = superClass.getDeclaredField(fieldName);
-	        } catch (NoSuchFieldException e) {
-	            superClass = superClass.getSuperclass();
-	        }
-	    }
-	    if (field == null) {
-	        return false;
-	    }
-	    field.setAccessible(true);
-	    try {
-	        field.set(targetObject, fieldValue);
-	        return true;
-	    } catch (IllegalAccessException e) {
-	        return false;
-	    }
+		return ReflectionUtils.createObjectWithFields(tClass, sliceMap);
 	}
 }

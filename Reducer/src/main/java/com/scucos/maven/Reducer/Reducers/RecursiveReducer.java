@@ -50,10 +50,10 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 	 */
 	public class CollectionNode implements Comparable<CollectionNode> {
 		public Collection<?> objects;
-		public Object category;
+		public String category;
 		public Integer count;
 		
-		public CollectionNode(Collection<?> objects, Object category, Integer count) {
+		public CollectionNode(Collection<?> objects, String category, Integer count) {
 			this.objects = objects;
 			this.category = category;
 			this.count = count;
@@ -82,12 +82,12 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 		}
 		
 		Map<Collection<?>, Integer> collectionCountMap = new HashMap<>();
-		Map<Collection<?>, Object> collectionCategoryMap = new HashMap<>();
+		Map<Collection<?>, String> collectionCategoryMap = new HashMap<>();
 		
 		
-		Set<Object> categories = slices.iterator().next().getCategories();
+		Set<String> categories = slices.iterator().next().getCategories();
 		for(Slice<T> slice : slices) {
-			for(Object category : categories) {
+			for(String category : categories) {
 				Collection<?> objects = slice.getEntry(category);
 				collectionCountMap.put(objects, collectionCountMap.getOrDefault(objects, 0) + 1);
 				if(!collectionCategoryMap.containsKey(objects)) {
@@ -96,9 +96,9 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 			}
 		}
 		
-		for(Entry<Collection<?>, Object> partialNode : collectionCategoryMap.entrySet()) {
+		for(Entry<Collection<?>, String> partialNode : collectionCategoryMap.entrySet()) {
 			Collection<?> objects = partialNode.getKey();
-			Object category = partialNode.getValue();
+			String category = partialNode.getValue();
 			Integer count = collectionCountMap.get(objects);
 			
 			queue.add(new CollectionNode(objects, category, count));
@@ -161,7 +161,7 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 		
 		CollectionNode mostNode = collectionsQueue.poll();
 		Collection<?> mostObjects = mostNode.objects;
-		Object mostCategory = mostNode.category;
+		String mostCategory = mostNode.category;
 		Integer mostCount = mostNode.count;
 		
 		if(mostCount == 1) { // No merging is possible, all collections are unique

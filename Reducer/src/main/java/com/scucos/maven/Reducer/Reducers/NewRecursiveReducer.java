@@ -101,23 +101,23 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 	 * @param slices
 	 * @return
 	 */
-	Tuple<PriorityQueue<CollectionNode>, Map<Collection<?>, Tuple<Integer, Object>>> buildCollectionCounts(Set<Slice<T>> slices) {
+	Tuple<PriorityQueue<CollectionNode>, Map<Collection<?>, Tuple<Integer, String>>> buildCollectionCounts(Set<Slice<T>> slices) {
 		calls += 1;
 		PriorityQueue<CollectionNode> queue = new PriorityQueue<>();
 		
-		Map<Collection<?>, Tuple<Integer, Object>> map = new HashMap<>();
+		Map<Collection<?>, Tuple<Integer, String>> map = new HashMap<>();
 		
 		if(slices.size() == 0) {
 			return new Tuple<>(queue, map);
 		}
 		
 		Map<Collection<?>, Integer> collectionCountMap = new HashMap<>();
-		Map<Collection<?>, Object> collectionCategoryMap = new HashMap<>();
+		Map<Collection<?>, String> collectionCategoryMap = new HashMap<>();
 		
 		
-		Set<Object> categories = slices.iterator().next().getCategories();
+		Set<String> categories = slices.iterator().next().getCategories();
 		for(Slice<T> slice : slices) {
-			for(Object category : categories) {
+			for(String category : categories) {
 				Collection<?> objects = slice.getEntry(category);
 				collectionCountMap.put(objects, collectionCountMap.getOrDefault(objects, 0) + 1);
 				if(!collectionCategoryMap.containsKey(objects)) {
@@ -126,9 +126,9 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 			}
 		}
 		
-		for(Entry<Collection<?>, Object> partialNode : collectionCategoryMap.entrySet()) {
+		for(Entry<Collection<?>, String> partialNode : collectionCategoryMap.entrySet()) {
 			Collection<?> objects = partialNode.getKey();
-			Object category = partialNode.getValue();
+			String category = partialNode.getValue();
 			Integer count = collectionCountMap.get(objects);
 			
 			map.put(objects, new Tuple<>(count, category));
@@ -166,21 +166,21 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 	 * @param secondTry
 	 * @return
 	 */
-	private Tuple<Set<Slice<T>>, Map<Collection<?>, Tuple<Integer, Object>>> reduceRecursive(Set<Slice<T>> slices, final Map<Collection<?>, Tuple<Integer, Object>> map, int width) {
+	private Tuple<Set<Slice<T>>, Map<Collection<?>, Tuple<Integer, String>>> reduceRecursive(Set<Slice<T>> slices, final Map<Collection<?>, Tuple<Integer, String>> map, int width) {
 		if(slices.isEmpty() || slices.size() == 1 || width == 0) {
 			return new Tuple<>(slices, map);
 		}
 		
 		if(width == 1) {
-			Object category = null;
+			String category = null;
 			
 			for(Slice<T> slice : slices) {
 				category = slice.getCategories().stream().findAny().get();
-				Tuple<Integer, Object> tuple = map.get(slice.getEntry(category));
+				Tuple<Integer, String> tuple = map.get(slice.getEntry(category));
 				tuple.setO1(tuple.o1 - 1);
 			}
 			
-			final Object finalCategory = category;
+			final String finalCategory = category;
 			
 			final Collection<Object> lost = new HashSet<>();
 			
@@ -204,10 +204,10 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 		}
 		
 		Collection<?> mostObjects = null;
-		Object mostCategory = null;
+		String mostCategory = null;
 		Integer mostCount = 0; 
 		
-		for(Entry<Collection<?>, Tuple<Integer, Object>> entry : map.entrySet()) {
+		for(Entry<Collection<?>, Tuple<Integer, String>> entry : map.entrySet()) {
 			int size = entry.getValue().o1;
 			if(size > mostCount) {
 				mostCount = size;
@@ -220,7 +220,7 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 			return new Tuple<>(slices, map);
 		}
 		
-		final Object finalMostCategory = mostCategory;
+		final String finalMostCategory = mostCategory;
 		final Collection<?> finalMostObjects = mostObjects;
 		
 		Map<Boolean, List<Slice<T>>> partition = slices.stream().collect(Collectors.partitioningBy(s -> s.getEntry(finalMostCategory).equals(finalMostObjects)));
@@ -239,11 +239,11 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 				.collect(Collectors.toSet());
 		
 		
-		Tuple<Integer, Object> addBack = map.remove(mostObjects);
+		Tuple<Integer, String> addBack = map.remove(mostObjects);
 		
 		for(Slice<T> slice : slicesWithoutMost) {
 			for(Collection<?> collection : slice.getMap().values()) {
-				Tuple<Integer, Object> innerTuple = map.get(collection);
+				Tuple<Integer, String> innerTuple = map.get(collection);
 				innerTuple.setO1(innerTuple.o1 - 1);
 				if(innerTuple.o1 <= 0) {
 					
@@ -254,7 +254,7 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 		
 		int mostBefore = slicesContainingMost.size();
 		
-		Tuple<Set<Slice<T>>, Map<Collection<?>, Tuple<Integer, Object>>> reducedMostResult = reduceRecursive(slicesContainingMost, map, width - 1);
+		Tuple<Set<Slice<T>>, Map<Collection<?>, Tuple<Integer, String>>> reducedMostResult = reduceRecursive(slicesContainingMost, map, width - 1);
 		
 		Set<Slice<T>> reducedMost = reducedMostResult
 				.o1
@@ -273,7 +273,7 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 			for(Slice<T> slice : reducedMost) {
 				for(Collection<?> collection : slice.getMap().values()) {
 					if(collection != mostObjects) {
-						Tuple<Integer, Object> innerTuple = map.get(collection);
+						Tuple<Integer, String> innerTuple = map.get(collection);
 						innerTuple.setO1(innerTuple.o1 - 1);
 					}
 
@@ -294,7 +294,7 @@ public abstract class NewRecursiveReducer<T> implements Reducer<T> {
 			
 			for(Slice<T> slice : slicesWithoutMost) {
 				for(Collection<?> collection : slice.getMap().values()) {
-					Tuple<Integer, Object> innerTuple = map.get(collection);
+					Tuple<Integer, String> innerTuple = map.get(collection);
 					innerTuple.setO1(innerTuple.o1 + 1);
 				}
 			}

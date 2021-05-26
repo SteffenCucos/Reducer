@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 import com.scucos.maven.Reducer.Slice.SliceConstructionException;
 import com.scucos.maven.Reducer.Slice;
-import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
+import com.scucos.maven.Reducer.Reducers.ReflectionUtils.ObjectConstructionException;
 
 /**
  * The interface that defines all the necessary methods that a reducer must implement.

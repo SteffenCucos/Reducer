@@ -4,8 +4,8 @@ import java.util.Collection;
 import java.util.Map;
 
 import com.scucos.maven.Reducer.Slice;
-import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
 import com.scucos.maven.Reducer.Slice.SliceConstructionException;
+import com.scucos.maven.Reducer.Reducers.ReflectionUtils.ObjectConstructionException;
 
 public class MapReducer<K, V> extends RecursiveReducer<Map<K, Collection<V>>> {	
 	

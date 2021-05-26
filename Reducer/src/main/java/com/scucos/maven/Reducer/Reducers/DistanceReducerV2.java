@@ -59,7 +59,7 @@ public abstract class DistanceReducerV2<T> implements Reducer<T> {
 	}
 	
 	public Tuple<Integer, Integer> difference(Slice<T> s1, Slice<T> s2) {
-		Set<Object> categories = s1.getCategories();
+		Set<String> categories = s1.getCategories();
 		int S1IntoS2 = categories.size();
 		int S2IntoS1 = categories.size();
 		
@@ -79,7 +79,7 @@ public abstract class DistanceReducerV2<T> implements Reducer<T> {
 	
 	@SuppressWarnings("unchecked")
 	public Slice<T> mergeInto(Slice<T> s1, Slice<T> s2) {
-		Set<Object> categories = s1.getCategories();
+		Set<String> categories = s1.getCategories();
 		for(Object category : categories) {
 			Collection<Object> e1 = (Collection<Object>) s1.getEntry(category);
 			Collection<Object> e2 = (Collection<Object>) s2.getEntry(category);
