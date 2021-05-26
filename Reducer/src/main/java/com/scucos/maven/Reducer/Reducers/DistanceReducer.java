@@ -1,7 +1,11 @@
-package com.scucos.maven.Reducer;
+package com.scucos.maven.Reducer.Reducers;
 
 import java.util.Set;
+
+import com.scucos.maven.Reducer.Slice;
+
 import java.util.HashSet;
+import java.util.List;
 import java.util.PriorityQueue;
 
 public abstract class DistanceReducer<T> implements Reducer<T> {
@@ -33,10 +37,10 @@ public abstract class DistanceReducer<T> implements Reducer<T> {
 					continue;
 				}
 				
-				Set<Object> differentCategories = slice.asymetricDifference(head);
+				List<Object> differentCategories = slice.asymetricDifference(head);
 				int distance = differentCategories.size();
 				
-				if(distance == 1) { //They only differ in one category, we can merge them with no "holes" in the slice
+				if(distance == 1) { // They only differ in one category, we can merge them with no "holes" in the slice
 					Object unionCategory = differentCategories.iterator().next();
 					head.unionAdd(unionCategory, slice);
 				} else {

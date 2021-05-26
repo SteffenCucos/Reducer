@@ -1,6 +1,8 @@
-package com.scucos.maven.Reducer;
+package com.scucos.maven.Reducer.Reducers;
 
 import java.util.Set;
+
+import com.scucos.maven.Reducer.Slice;
 
 public abstract class GraphDistanceReducer<T> implements Reducer<T> {
 
@@ -27,6 +29,18 @@ public abstract class GraphDistanceReducer<T> implements Reducer<T> {
 		 * 3 ------x  1
 		 * 4 ---------x
 		 */
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		
 		return null;
 	}	

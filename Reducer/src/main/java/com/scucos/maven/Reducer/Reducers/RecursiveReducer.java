@@ -1,4 +1,4 @@
-package com.scucos.maven.Reducer;
+package com.scucos.maven.Reducer.Reducers;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -9,6 +9,9 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
+
+import com.google.common.collect.ImmutableSet;
+import com.scucos.maven.Reducer.Slice;
 
 /**
  * Abstract implementation that provides a recursive merging algorithm for turning a Set<Slice<T>> into a fully reduced Set<Slice<T>>.
@@ -35,7 +38,7 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 	public Set<Slice<T>> reduceSlices(Set<Slice<T>> slices) {
 		Set<Slice<T>> reduced = reduceRecursive(slices, getWidth(slices));
 		
-		System.out.println(String.format("%s calls to buildQueue", calls));
+		//System.out.println(String.format("%s calls to buildQueue", calls));
 		calls = 0;
 		return reduced;
 	}	
@@ -130,7 +133,6 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 	 * @param secondTry
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
 	private Set<Slice<T>> reduceRecursive(Set<Slice<T>> slices, int width) {
 		if(slices.isEmpty() || slices.size() == 1 || width == 0) {
 			return slices;
@@ -140,25 +142,19 @@ public abstract class RecursiveReducer<T> implements Reducer<T> {
 		
 		if(width == 1) {
 			Object category = collectionsQueue.poll().category;
-			Collection<Object> objects = slices
-					.stream()
-					.map(s -> (Collection<Object>)s.getEntry(category))
-					.reduce(null, (accumulator, currentObjects) -> {
+			Slice<T> reduced = slices.stream().reduce(
+					null, 
+					(accumulator, current) -> {
 						if(accumulator == null) {
-							return currentObjects;
+							return current;
 						}
-						accumulator.addAll(currentObjects);
+						
+						accumulator.unionAdd(category, current);
 						return accumulator;
-					});
-			
-			
-			Map<Object, Collection<?>> sliceMap = new HashMap<>();
-			sliceMap.put(category, objects);
-			Slice<T> mergedSlice = new Slice<T>(sliceMap);
-			Set<Slice<T>> mergedSliceSet = new HashSet<>();
-			mergedSliceSet.add(mergedSlice);
-			
-			return mergedSliceSet;
+					}
+			);
+
+			return ImmutableSet.of(reduced);
 		}
 		
 		int prevSize = slices.size();

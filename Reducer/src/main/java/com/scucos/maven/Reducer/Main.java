@@ -1,106 +1,73 @@
 package com.scucos.maven.Reducer;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
-import com.scucos.maven.Reducer.Slice.SliceConstructionException;
+import com.scucos.maven.Reducer.Reducers.NewRecursiveReducer;
+import com.scucos.maven.Reducer.Reducers.RecursiveReducer;
+import com.scucos.maven.Reducer.Reducers.Reducer;
 
 public class Main {
 
-	public static Set<Region> makeLargeRegion(int multiplier) {
-		Set<Region> cubicRegion = new HashSet<>();
-		for(int x = 0; x < multiplier; x++) {
-			for(int y = 0; y < 50; y++) {
-				for(int z = 0; z < 50; z++) {
-					cubicRegion.add(new Region(String.valueOf(x), String.valueOf(y), z));
+	public static Set<Region> makeLargeRegion(int multiplier, boolean sparse) {
+		Set<Region> cube = new HashSet<>();
+		if(sparse) {
+			for(int i = 0; i < multiplier*150*150; i++) {
+				cube.add(new Region(String.valueOf(i), String.valueOf(i)+ "asd", i));
+				cube.add(new Region(String.valueOf(i), String.valueOf(i)+ "asd", i+1));
+			}
+		} else {
+			for(int x = 0; x < multiplier; x++) {
+				for(int y = 0; y < 150; y++) {
+					for(int z = 0; z < 150; z++) {
+						cube.add(new Region(String.valueOf(x), "a"+String.valueOf(y), z));
+					}
 				}
 			}
 		}
 		
-		return cubicRegion;
+		return cube;
 	}
 	
-	@SuppressWarnings("unchecked" )
 	public static void main(String[] args) {
-		//If you have your entities as Maps of categories -> objects 
-		MapReducer<Integer, Collection<Long>> mapIntegerLongReducer = new MapReducer<Integer, Collection<Long>>();
 		
-		//If you want to use reflection to merge all fields that are collections
-		Reducer<Region> recursiveReducer = new RecursiveReducer<Region>() {
-			@Override
-			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
-				return new Slice<>(region); // Reflection based toSlice
-			}
-			
-			@Override
-			public Region fromSlice(Slice<Region> slice) throws ObjectConstructionException {
-				return slice.toType(Region.class); // Reflection based fromSlice 
-			}
-		};
+		Reducer<Region> recursiveReducer = new RecursiveReducer<Region>(){};
 		
-		//If you want to use custom logic for reducing your entities
-		Reducer<Region> distanceReducer = new DistanceReducer<Region>() {
-			@Override
-			public Slice<Region> toSlice(Region region) throws SliceConstructionException {
-				return new Slice<Region>() {{
-					addEntry("countries", region.countries);
-					addEntry("cities", region.cities);
-					addEntry("populations", region.populations);
-				}};
-			}
-			
-			@Override
-			public Region fromSlice(Slice<Region> slice) throws ObjectConstructionException {
-				Set<String> countries = Slice.getFieldAsType("countries", slice, new HashSet<>());
-				//Set<String> states = Slice.getAsType("states", slice, new HashSet<>());
-				Set<String> cities = Slice.getFieldAsType("cities", slice, new HashSet<>());
-				Set<Integer> populations = Slice.getFieldAsType("populations", slice, new HashSet<>());
-				return new Region(countries, cities, populations);
-			}
-		};
+		Reducer<Region> newRecursiveReducer = new NewRecursiveReducer<Region>() {};
 	 	
 
+		System.out.println("Recursive 3 Dimensional Full Cube\n");
+		//time(recursiveReducer, false);
 		
-		System.out.println("Distance");
-		time(distanceReducer);
-		
-//		System.out.println("Recursive");
-//		time(recursiveReducer);
-		
-		return;
+		System.out.println("\nNew Recursive 3 Dimensional Full Cube\n");
+		time(newRecursiveReducer, true);
 	}
 	
-	public static void time(Reducer<Region> reducer) {
-		for(int i = 1; i < 6; i++) {
-			Set<Region> large = makeLargeRegion(i);
-			Set<Region> reduced = reducer.reduce(large);
-			int size = reduced.size();
+	public static void time(Reducer<Region> reducer, boolean sparse) {
+		for(int i = 1; i < 5; i++) {
+			Set<Region> large = makeLargeRegion(i, sparse);
+			reducer.reduce(large);
 		}
 	}
 	
 	public static class Region {
-		public Set<String> countries;
-		//public Set<String> states;
-		public Set<String> cities;
-		public Set<Integer> populations;
+		Set<String> countries;
+		Set<String> cities;
+		Set<Integer> populations;
 		
 		public Region() {
 			
 		}
 		
-		@SuppressWarnings("unchecked" )
+		@SuppressWarnings({ "unchecked", "rawtypes", "serial" } )
 		public Region(String country, String city, Integer population) {
 			this.countries = new HashSet() {{ add(country); }};
-			//this.states = new HashSet() {{ add(state); }};
 			this.cities = new HashSet() {{ add(city); }};
 			this.populations = new HashSet() {{ add(population); }};
 		}
 		
 		public Region(Set<String> countries, Set<String> cities, Set<Integer> populations) {
 			this.countries = countries;
-			//this.states = states;
 			this.cities = cities;
 			this.populations = populations;
 		}

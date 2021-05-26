@@ -1,9 +1,10 @@
-package com.scucos.maven.Reducer;
+package com.scucos.maven.Reducer.Reducers;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.scucos.maven.Reducer.Slice.SliceConstructionException;
+import com.scucos.maven.Reducer.Slice;
 import com.scucos.maven.Reducer.Slice.ObjectConstructionException;
 
 /**
@@ -28,13 +29,23 @@ public interface Reducer<T> {
 				.map(t -> toSlice(t))
 				.collect(Collectors.toSet());
 		
-		Set<Slice<T>> reduced = time("Reduce", () -> {
-			return reduceSlices(slices);
-		});
-		
-		int afterSize = reduced.size();
-		
-		System.out.println(String.format("Reduced %s object(s) to %s slice(s)", oldSize, afterSize));
+		Set<Slice<T>> reduced = time(
+			new Timeable() {
+				int afterSize;
+				
+				@Override
+				public Object run() {
+					Set<Slice<T>> reduced = reduceSlices(slices);
+					afterSize = reduced.size();
+					return reduced; 
+				}
+	
+				@Override
+				public String runDescription() {
+					return String.format("Reduced %s slices(s) to %s slice(s)", oldSize, afterSize);
+				}
+			}
+		);
 		
 		return reduced
 				.stream()
@@ -55,7 +66,9 @@ public interface Reducer<T> {
 	 * @return
 	 * @throws SliceConstructionException
 	 */
-	Slice<T> toSlice(T t) throws SliceConstructionException;
+	default Slice<T> toSlice(T t) throws SliceConstructionException {
+		return new Slice<T>(t);
+	}
 	
 	/**
 	 * Responsible for turning a Slice<T> back into a T
@@ -63,13 +76,16 @@ public interface Reducer<T> {
 	 * @return
 	 * @throws ObjectConstructionException
 	 */
-	T fromSlice(Slice<T> slice) throws ObjectConstructionException;
+	default T fromSlice(Slice<T> slice) throws ObjectConstructionException {
+		return slice.toType();
+	}
 	
 	/**
-	 * Dummy interface for taking a lambda argument
+	 * Interface for a timeable operation with a description of running the operation
 	 */
-	interface timeable {
+	interface Timeable {
 		Object run();
+		String runDescription();
 	}
 	
 	/**
@@ -80,11 +96,11 @@ public interface Reducer<T> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	static <T> T time(String opperation, timeable lambda) {
+	static <T> T time(Timeable timeable) {
 		long startTime = System.currentTimeMillis();
-		Object result = lambda.run();
+		Object result = timeable.run();
 		long endTime = System.currentTimeMillis();
-		System.out.println(opperation + " took " + (endTime - startTime) + " milliseconds");
+		System.out.println(timeable.runDescription() + " took " + (endTime - startTime) + " milliseconds");
 		
 		return (T)result;
 	}

@@ -1,6 +1,5 @@
 package com.scucos.maven.Reducer;
 
-import java.util.stream.Collectors;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.ArrayList;
@@ -21,6 +20,8 @@ public class Slice<T> implements Comparable<Slice<T>> {
 
 	private Map<Object, Collection<?>> sliceMap = new HashMap<>();
 	
+	private Class<T> tClass;
+	
 	@SuppressWarnings("serial")
 	public static class SliceConstructionException extends RuntimeException {
 		public SliceConstructionException(String error) {
@@ -35,21 +36,15 @@ public class Slice<T> implements Comparable<Slice<T>> {
 		}
 	}
 	
-	// Constructors
-	
-	Class<T> tClass;
-	
-	public Slice(Class<T> tClass) throws SliceConstructionException {
-		this.tClass = tClass;
-	}
-	
+	// Constructor
+
 	@SuppressWarnings("unchecked")
-	public Slice(T t, Class<? extends Object> tClass) throws SliceConstructionException {
+	public Slice(T t) throws SliceConstructionException {
 		
-		this.tClass = (Class<T>) tClass;
+		this.tClass = (Class<T>) t.getClass();
 		
 		//Only work on the top level fields (ignore super fields)
-		for(Field field : t.getClass().getDeclaredFields()) {
+		for(Field field : tClass.getDeclaredFields()) {
 			
 			String name = field.getName();
 			Class<?> fieldClass = field.getType();
@@ -99,8 +94,11 @@ public class Slice<T> implements Comparable<Slice<T>> {
 		return sliceMap;
 	}
 	
-	public int volume() {
-		return this.getMap().values().stream().map(c -> c.size()).reduce(1, (accumulator, current) -> accumulator*current);
+	public long volume() {
+		return this.getMap().values()
+				.stream()
+				.map(c -> (long)c.size())
+				.reduce(1l, Math::multiplyExact);
 	}
 	
 	public String toString() {
@@ -111,8 +109,8 @@ public class Slice<T> implements Comparable<Slice<T>> {
 	
 	@Override
 	public int compareTo(Slice<T> other) {
-		int otherVolume = other.volume();
-		int volume = volume();
+		long otherVolume = other.volume();
+		long volume = volume();
 		return (volume > otherVolume) ? -1 : (volume == otherVolume) ? 0 : 1;
 	}
 	

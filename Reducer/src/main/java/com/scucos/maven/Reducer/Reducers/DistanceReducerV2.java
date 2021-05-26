@@ -1,8 +1,10 @@
-package com.scucos.maven.Reducer;
+package com.scucos.maven.Reducer.Reducers;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+
+import com.scucos.maven.Reducer.Slice;
 
 public abstract class DistanceReducerV2<T> implements Reducer<T> {
 
