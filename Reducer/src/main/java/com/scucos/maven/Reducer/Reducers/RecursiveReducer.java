@@ -18,11 +18,26 @@ import com.scucos.maven.Reducer.Slice;
  * It accomplishes this by describing a N dimensional space (one dimensions for each unique category in a Slice<T>) and trying to form
  * the largest possible sub-regions of the space with no overlap.
  * 
- * The Runtime is ~proportional to the N dimensional volume of the smallest super-slice 
- * that contains all the incoming slices times the density of the contained points ( 0 < density <= 1 )
- * For example if the majority of the contained points are approximately contained in one quarter of the 
- * the smallest containing super-slice, it has a density of ~0.25 and thus runs 4x faster than if the
- * same super-slice had a density of ~1.0.
+ * Runtime complexity:
+ * Let n be the number of input slices, d be the number of categories per slice,
+ * U_i be the number of unique values/collections in category i, and
+ * V = product(U_i) be the N-dimensional volume of the smallest super-slice that
+ * contains the input. For point-slice inputs with uniform category structure,
+ * the algorithm recursively partitions by the most common category entry and
+ * rebuilds collection counts at each recursive level. The expected work is
+ * roughly proportional to the explored portion of that containing volume. Dense
+ * inputs approach O(V * d), while sparse inputs run closer to O(n * d) when the
+ * recursion quickly proves that no larger complete regions can be formed.
+ *
+ * In the worst case, repeated recounting and repeated recursive passes after a
+ * successful merge can add extra scans over the working sets. A conservative
+ * upper bound is O(p * n * d * r), where p is the number of merge/retry passes
+ * and r is the number of recursive partition calls. For the intended point-slice
+ * workload, V and density are more useful predictors than raw n alone.
+ *
+ * Space usage is O(n * d) for the working slices, partitions, and collection
+ * count structures, excluding the storage already held by each category value.
+ *
  * @author SCucos
  *
  * @param <T> The entity type that will be merged
