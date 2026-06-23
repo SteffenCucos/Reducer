@@ -18,11 +18,27 @@ import com.scucos.maven.Reducer.Slice;
  * It accomplishes this by describing a N dimensional space (one dimensions for each unique category in a Slice<T>) and trying to form
  * the largest possible sub-regions of the space with no overlap.
  * 
- * The Runtime is ~proportional to the N dimensional volume of the smallest super-slice 
- * that contains all the incoming slices times the density of the contained points ( 0 < density <= 1 )
- * For example if the majority of the contained points are approximately contained in one quarter of the 
- * the smallest containing super-slice, it has a density of ~0.25 and thus runs 4x faster than if the
- * same super-slice had a density of ~1.0.
+ * Runtime complexity:
+ * Let n be the number of input slices, d be the number of categories per slice,
+ * U_i be the number of unique values/collections in category i, and
+ * V = product(U_i) be the N-dimensional volume of the smallest super-slice that
+ * contains the input. This implementation maintains a mutable count map across
+ * recursive calls, avoiding some of the recounting done by RecursiveReducer.
+ * For the intended point-slice workload, expected runtime is roughly
+ * proportional to the explored portion of V, with dense inputs approaching
+ * O(V * d) and sparse/non-mergeable inputs often closer to O(n * d).
+ *
+ * Each recursive partition scans the active working set and may update counts
+ * for each category entry. Successful reductions can recurse again over the
+ * smaller reduced set. A conservative upper bound is O(p * n * d * r), where p
+ * is the number of retry passes after successful merges and r is the number of
+ * recursive partitions. In practice this version should reduce constant factors
+ * versus RecursiveReducer by reusing count state instead of rebuilding the full
+ * collection-count queue at every recursion level.
+ *
+ * Space usage is O(n * d) for working slices, partitions, and count maps,
+ * excluding the storage already held by category values.
+ *
  * @author SCucos
  *
  * @param <T> The entity type that will be merged
