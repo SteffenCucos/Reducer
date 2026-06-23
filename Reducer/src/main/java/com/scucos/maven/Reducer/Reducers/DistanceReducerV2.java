@@ -6,6 +6,25 @@ import java.util.Set;
 
 import com.scucos.maven.Reducer.Slice;
 
+/**
+ * Greedy distance-based reducer that repeatedly removes a head slice from the
+ * working set, compares it with every remaining slice, and either discards
+ * contained slices, replaces the head with a containing slice, merges slices
+ * that differ in one category, or carries the slice forward to the next pass.
+ *
+ * Runtime complexity:
+ * Let n be the number of input slices, d be the number of categories per slice,
+ * c be the maximum collection size stored in a category entry, and p be the
+ * number of recursive passes until the result stops shrinking. Each pass does
+ * O(n^2) pairwise comparisons in the worst case. Each difference check scans
+ * d categories and may call containsAll on category collections, so each pair
+ * costs O(d * c) for bounded collection implementations. Expected worst-case
+ * runtime is O(p * n^2 * d * c). If category entries are small, this is roughly
+ * O(p * n^2 * d). Space usage is O(n) for the reduced and leftover sets.
+ *
+ * This implementation avoids the priority queue used by DistanceReducer, but
+ * it has the same quadratic pairwise-comparison shape.
+ */
 public abstract class DistanceReducerV2<T> implements Reducer<T> {
 
 	@Override
